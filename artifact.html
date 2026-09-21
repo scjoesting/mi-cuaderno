@@ -149,6 +149,15 @@ label.check input{width:18px;height:18px;accent-color:var(--accent)}
 .chip-lg{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 18px;font-size:22px;font-weight:700;font-family:var(--display);display:inline-flex;gap:8px;align-items:baseline;min-width:76px;justify-content:center;white-space:nowrap;transition:transform .08s}
 .chip-lg:hover{background:var(--accent-soft);border-color:var(--accent)}
 .chip-lg:active{transform:translateY(1px)}
+.optx{margin-top:14px}
+.optx ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.optx li{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;align-items:baseline;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}
+.optx li.correct{background:var(--good-soft);border-color:var(--good)}
+.optx li.picked:not(.correct){background:var(--bad-soft);border-color:var(--bad)}
+.optx .ch{font-family:var(--display);font-weight:700;font-size:20px;min-width:3em}
+.optx .hint{grid-column:2;font-size:13px;color:var(--muted)}
+.tag.good{background:var(--good);color:#fff}
+.tag.bad{background:var(--bad);color:#fff}
 .key{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;min-width:40px;height:40px;font-size:18px;font-weight:700}
 .key:hover{background:var(--accent-soft)}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
@@ -687,6 +696,15 @@ function nextVerb(){
   const opts=shuffle(idx.map(i=>({i, label: v.type==='irr'? conj(v)[i] : '-'+ENDINGS[v.type][i]})));
   V.cur={v,pi,opts}; V.state='ask';
 }
+const ENDING_HINTS=['yo always ends in -o, for every regular verb','tú always ends in -s','él / ella / usted is the bare theme vowel: -a for -ar verbs, -e for -er and -ir','nosotros always ends in -mos','vosotros ends in -áis, -éis or -ís (Spain only)','ellos / ellas / ustedes always ends in -n'];
+function optionsBreakdown(v,pi,opts,picked){
+  const f=conj(v);
+  return `<div class="optx"><div class="eyebrow">What each option was</div><ul>${opts.map(o=>{
+    const cls=(o.i===pi?'correct':'')+(o.i===picked?' picked':'');
+    const tag=o.i===pi?'<span class="tag good">correct</span>':o.i===picked?'<span class="tag bad">your pick</span>':'';
+    const hint=v.type==='irr'?`irregular form for ${esc(PRON_EN[o.i])}`:ENDING_HINTS[o.i];
+    return `<li class="${cls.trim()}"><span class="ch" lang="es">${esc(o.label)}</span><span><span lang="es">${esc(PRON[o.i])}</span> <span class="sub">(${esc(PRON_EN[o.i])})</span>${v.type==='irr'?'':` → <b class="es" lang="es">${esc(f[o.i])}</b>`} ${tag}</span><span class="hint">${hint}</span></li>`; }).join('')}</ul></div>`;
+}
 function verbTable(v,hi){ const f=conj(v); return `<div class="tbl"><table><thead><tr><th>${esc(v.inf)} · ${esc(v.en)}</th><th></th></tr></thead><tbody>${PRON.map((p,i)=>(i===4&&!P.settings.vosotros)?'':`<tr><td>${esc(p)}<br><span class="sub" style="font-size:12px">${esc(PRON_EN[i])}</span></td><td class="${i===hi?'hl':''}"><b class="es" lang="es">${esc(f[i])}</b></td></tr>`).join('')}</tbody></table></div>`; }
 function recordVerb(kind){
   const st=vStats(vLevel()); const ok=kind!=='wrong';
@@ -724,7 +742,7 @@ function renderVerbs(){
       : `<span class="ink">Regular -${v.type} verb: drop <b>-${v.type}</b> from <b lang="es">${esc(v.inf)}</b> to get the stem <b lang="es">${esc(stem)}-</b>, then add the <b>${esc(PRON[pi])}</b> ending <b>-${esc(ENDINGS[v.type][pi])}</b>.</span>`;
     const expl=`A Spanish 1 student was asked to conjugate "${v.inf}" (${v.en}) for "${PRON[pi]}" and ${r.ans?`answered "${r.ans}"`:'asked to see the answer'}. The correct form is "${target}". In 3 short sentences, explain the rule and give a memory trick.`;
     body=`<div class="feedback ${cls}"><b>${headTxt}</b><span class="ink" style="font-size:20px"><span lang="es">${esc(PRON[pi])}</span> <b class="es" lang="es">${esc(target)}</b> ${speakBtn(PRON[pi].split(' / ')[0]+' '+target)}</span>${r.kind!=='right'&&r.ans?`<span>You ${level==='build'?'picked':'wrote'}: <s lang="es">${esc(r.ans)}</s></span>`:''}${rule}${r.kind==='wrong'?explainBox(expl):''}</div>
-      ${r.kind!=='right'||r.show?verbTable(v,pi):''}
+      ${level==='build'?optionsBreakdown(v,pi,opts,r.picked):(r.kind!=='right'||r.show?verbTable(v,pi):'')}
       <div class="row" style="margin-top:14px"><button class="btn primary" id="vNext">Siguiente <small>next<span class="khint"> · enter</span></small></button></div>`;
   }
   const nudge = readyToMoveUp()&&!V.nudgeHidden ? `<div class="tip row between" style="margin-top:14px"><span>¡Muy bien! You're at 80%+ on your last 10. Ready to type the forms yourself?</span><span class="row"><button class="btn primary" id="nudgeYes" style="padding:8px 12px">Try typing</button><button class="btn ghost" id="nudgeNo" style="padding:8px 12px;color:var(--sun-ink)">Not yet</button></span></div>` : '';
@@ -759,7 +777,7 @@ function renderVerbs(){
 function setVerbLevel(l){ if(l===vLevel()) return; P.settings.verbLevel=l; save(); V.cur=null; V.state='ask'; V.right=0; V.total=0; V.run=0; nextVerb(); renderVerbs(); }
 function pickVerb(i){ // Build level: i is the pronoun index of the chip tapped
   const {v,pi}=V.cur; const target=conj(v)[pi]; const chosen=conj(v)[i]; const kind= i===pi?'right':'wrong';
-  recordVerb(kind); V.last={kind,ans:chosen}; V.state='done'; say(PRON[pi].split(' / ')[0]+' '+target); renderVerbs();
+  recordVerb(kind); V.last={kind,ans:chosen,picked:i}; V.state='done'; say(PRON[pi].split(' / ')[0]+' '+target); renderVerbs();
 }
 function checkVerb(ans){ // Type level
   const {v,pi}=V.cur; const target=conj(v)[pi]; let kind='wrong';
