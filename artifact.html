@@ -105,7 +105,7 @@ label.check input{width:18px;height:18px;accent-color:var(--accent)}
 .fc.flipped .fc-inner{transform:rotateY(180deg)}
 .fc-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:28px 24px;border:1px solid var(--line);box-shadow:var(--shadow)}
 .fc-face.front{background:var(--surface)}
-.fc-face.back{background:var(--accent-soft);transform:rotateY(180deg)}
+.fc-face.back{background:var(--accent-soft);transform:rotateY(180deg);padding-bottom:118px}
 .fc-word{font-family:var(--display);font-size:clamp(28px,6vw,44px);font-weight:700;line-height:1.1;text-wrap:balance}
 .fc-hint{position:absolute;bottom:14px;font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 .tag{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.04em}
@@ -114,9 +114,10 @@ label.check input{width:18px;height:18px;accent-color:var(--accent)}
 .tag.n{background:var(--surface-2);color:var(--muted)}
 .speak{border:1px solid var(--line);background:var(--surface);border-radius:999px;width:40px;height:40px;display:inline-grid;place-items:center;color:var(--accent)}
 .speak:hover{background:var(--accent-soft)}
-.fc-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.fc-actions .btn{flex-direction:column;gap:2px;padding:12px 8px}
-.fc-actions.single{grid-template-columns:1fr}
+.fc-grade{position:absolute;left:14px;right:14px;bottom:14px;display:flex;flex-direction:column;gap:8px}
+.fc-grade .lbl{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;text-align:center}
+.fc-grade .btns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.fc-grade .btn{flex-direction:column;gap:2px;padding:10px 6px;line-height:1.2}
 .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;opacity:.7}
 .opts{display:grid;gap:10px;grid-template-columns:1fr}
 @media (min-width:560px){.opts{grid-template-columns:1fr 1fr}}
@@ -201,11 +202,12 @@ details ul{margin:0;padding-left:20px}
   .btn.big{padding:13px 18px;font-size:16px;flex-direction:column;gap:2px}
   .grid{grid-template-columns:1fr}
   .unit{padding:14px}
-  .fc{height:240px}
+  .fc{height:280px}
   .fc-word{font-size:clamp(26px,8vw,36px)}
-  .fc-actions{gap:8px}
-  .fc-actions .btn{padding:10px 4px;font-size:14px}
-  .fc-actions .btn small{font-size:11px}
+  .fc-grade{left:10px;right:10px;bottom:10px}
+  .fc-grade .btns{gap:6px}
+  .fc-grade .btn{padding:9px 4px;font-size:14px}
+  .fc-grade .btn small{font-size:11px}
   .prompt{font-size:clamp(24px,7vw,32px)}
   .opt{padding:12px 14px;font-size:17px}
   .summary-nums b{font-size:26px}
@@ -562,22 +564,24 @@ function renderCards(){
       <div class="row"><button class="btn ghost" id="dirBtn" title="Switch which side shows first">${dir==='es'?'Español → English':'English → Español'}</button><span class="sub" style="font-variant-numeric:tabular-nums">${FC.i+1} / ${FC.queue.length}</span></div></div>
     <div class="bar"><i style="width:${pct(FC.i/FC.queue.length)}%"></i></div>
     <div class="fc ${FC.flipped?'flipped':''}" id="fc" role="button" tabindex="0" aria-label="Flashcard. Press to flip.">
-      <div class="fc-inner"><div class="fc-face front">${front}<span class="fc-hint">tap to flip · space</span></div><div class="fc-face back">${back}<span class="fc-hint">how well did you know it?</span></div></div>
-    </div>
-    <div class="fc-actions ${FC.flipped?'':'single'}" id="acts">
-      ${FC.flipped? `<button class="btn bad" data-g="miss">No lo sabía <small>missed</small><span class="kbd">1</span></button>
-                    <button class="btn warn" data-g="almost">Casi <small>almost</small><span class="kbd">2</span></button>
-                    <button class="btn good" data-g="got">¡Lo sé! <small>got it</small><span class="kbd">3</span></button>`
-                  : `<button class="btn big" id="flipBtn">Voltear <small>flip</small></button>`}
+      <div class="fc-inner">
+        <div class="fc-face front">${front}<span class="fc-hint">tap the card to flip · space</span></div>
+        <div class="fc-face back">${back}${FC.flipped? `<div class="fc-grade"><span class="lbl">How well did you know it?</span><div class="btns">
+          <button class="btn bad" data-g="miss">No lo sabía <small>missed</small><span class="kbd">1</span></button>
+          <button class="btn warn" data-g="almost">Casi <small>almost</small><span class="kbd">2</span></button>
+          <button class="btn good" data-g="got">¡Lo sé! <small>got it</small><span class="kbd">3</span></button>
+        </div></div>`:''}</div>
+      </div>
     </div>
     <p class="sub" style="text-align:center;font-size:14px">Missed cards come back at the end of this set and again tomorrow.</p>
   </section>`;
   const flip=()=>{ FC.flipped=!FC.flipped; renderCards(); if(FC.flipped&&dir==='en') say(es); };
-  $('#fc').onclick=flip; $('#fc').onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); flip(); } };
-  if($('#flipBtn')) $('#flipBtn').onclick=flip;
+  const card=$('#fc');
+  card.onclick=e=>{ if(e.target.closest('[data-say],[data-g]')) return; flip(); };
+  card.onkeydown=e=>{ if(e.target!==card) return; if(e.key==='Enter'||e.key===' '){ e.preventDefault(); flip(); } };
   $('#dirBtn').onclick=()=>{ P.settings.dir=dir==='es'?'en':'es'; save(); FC.flipped=false; renderCards(); };
-  main.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>gradeCard(b.dataset.g));
-  if(!FC.flipped && dir==='es' && FC.i===0 && FC.autoSay!==false){ /* no auto audio; user taps speaker */ }
+  main.querySelectorAll('[data-g]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); gradeCard(b.dataset.g); });
+  card.focus({preventScroll:true});
 }
 function gradeCard(res){
   const id=FC.queue[FC.i]; grade(id,res); FC.stats[res]++;
