@@ -121,6 +121,8 @@ label.check input{width:18px;height:18px;accent-color:var(--accent)}
 .fc-grade .btn svg{width:26px;height:26px}
 .fc-grade .btn small{display:block}
 .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;opacity:.7}
+/* keyboard hints mean nothing on a touch screen */
+@media (hover:none) and (pointer:coarse){.kbd,.khint{display:none}}
 .opts{display:grid;gap:10px;grid-template-columns:1fr}
 @media (min-width:560px){.opts{grid-template-columns:1fr 1fr}}
 .opt{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:14px 16px;font-size:18px;display:flex;gap:12px;align-items:center}
@@ -568,7 +570,7 @@ function renderCards(){
     <div class="bar"><i style="width:${pct(FC.i/FC.queue.length)}%"></i></div>
     <div class="fc ${FC.flipped?'flipped':''}" id="fc" role="button" tabindex="0" aria-label="Flashcard. Press to flip.">
       <div class="fc-inner">
-        <div class="fc-face front">${front}<span class="fc-hint">tap the card to flip · space</span></div>
+        <div class="fc-face front">${front}<span class="fc-hint">tap the card to flip<span class="khint"> · space</span></span></div>
         <div class="fc-face back">${back}${FC.flipped? `<div class="fc-grade"><span class="lbl">Did you know it?</span><div class="btns">
           <button class="btn bad" data-g="miss">${THUMB_DOWN}<span>No lo sabía <small>missed</small></span><span class="kbd">1 or ←</span></button>
           <button class="btn good" data-g="got">${THUMB_UP}<span>¡Lo sé! <small>got it</small></span><span class="kbd">2 or →</span></button>
@@ -651,7 +653,7 @@ function renderQuiz(){
       else expl=`A Spanish 1 student thought "${es}" meant "${q.type==='es2en'?o.l:q.prompt}" but "${es}" means "${en}"${q.type==='en2es'?` (they chose "${o.l}" instead)`:''}. In 2-3 short sentences give a memory trick for "${es}" and one simple example sentence with its English meaning.`;
     }
     $('#qFeed').innerHTML=`<div class="feedback ${right?'good':'bad'}"><b>${right?'¡Correcto!':'Not quite.'}</b><span class="ink">${right?'':`The answer is <b class="es" lang="es">${esc(q.answer)}</b>. `}<span lang="es" class="es">${esc(es)}</span> = ${esc(en)}</span>${right?'':explainBox(expl)}</div>
-      <div class="row" style="margin-top:12px"><button class="btn primary" id="qNext">${Q.i+1<Q.qs.length?'Siguiente <small>next · enter</small>':'See my score'}</button></div>`;
+      <div class="row" style="margin-top:12px"><button class="btn primary" id="qNext">${Q.i+1<Q.qs.length?'Siguiente <small>next<span class="khint"> · enter</span></small>':'See my score'}</button></div>`;
     $('#qNext').onclick=()=>{ Q.i++; Q.answered=null; renderQuiz(); }; $('#qNext').focus();
   }
 }
@@ -674,7 +676,7 @@ function renderVerbs(){
       <form id="vForm" style="margin-top:16px;display:flex;flex-direction:column;gap:12px" autocomplete="off">
         <input type="text" id="vIn" lang="es" placeholder="Type the verb form…" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Your answer">
         ${accentKeys()}
-        <div class="row"><button class="btn primary" type="submit">Comprobar <small>check · enter</small></button><button class="btn ghost" type="button" id="vShow">Show me the table</button></div>
+        <div class="row"><button class="btn primary" type="submit">Comprobar <small>check<span class="khint"> · enter</span></small></button><button class="btn ghost" type="button" id="vShow">Show me the table</button></div>
       </form>`;
   } else {
     const r=V.last; const cls=r.kind==='right'?'good':r.kind==='accent'?'warn':'bad';
@@ -684,7 +686,7 @@ function renderVerbs(){
     const expl=`A Spanish 1 student was asked to conjugate "${v.inf}" (${v.en}) for "${PRON[pi]}" and wrote "${r.ans||'(nothing)'}". The correct form is "${target}". In 3 short sentences, explain the rule and give a memory trick.`;
     body=`<div class="feedback ${cls}"><b>${head}</b><span class="ink" style="font-size:20px"><span lang="es">${esc(PRON[pi])}</span> <b class="es" lang="es">${esc(target)}</b> ${speakBtn(PRON[pi].split(' / ')[0]+' '+target)}</span>${r.kind!=='right'&&r.ans?`<span>You wrote: <s>${esc(r.ans)}</s></span>`:''}${rule}${r.kind==='wrong'?explainBox(expl):''}</div>
       ${r.kind!=='right'||r.show?verbTable(v,pi):''}
-      <div class="row" style="margin-top:14px"><button class="btn primary" id="vNext">Siguiente <small>next · enter</small></button></div>`;
+      <div class="row" style="margin-top:14px"><button class="btn primary" id="vNext">Siguiente <small>next<span class="khint"> · enter</span></small></button></div>`;
   }
   main.innerHTML=`<section class="panel lift">
     <div class="row between"><div class="row"><span class="eyebrow">Verbos · Verb drill</span><select id="vGroup" aria-label="Verb set">${VERB_GROUPS.map(g=>`<option value="${g.id}" ${g.id===V.group?'selected':''}>${esc(g.label)}</option>`).join('')}</select></div>
