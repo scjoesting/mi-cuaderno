@@ -908,7 +908,7 @@ function renderNotes(){
   const t=(rows)=>`<div class="tbl"><table>${rows}</table></div>`;
   main.innerHTML=`<section class="panel"><div class="eyebrow">Apuntes · Grammar notes</div><h2 class="h2">The rules you need for Spanish 1</h2><p class="sub" style="margin-top:6px">Short, in plain English. Open one, read it, then go drill it.</p></section>
   <div>
-  <details open><summary>Subject pronouns (who is doing it)</summary><div class="body">
+  <details><summary>Subject pronouns (who is doing it)</summary><div class="body">
     ${t(`<thead><tr><th>Spanish</th><th>English</th></tr></thead><tbody>${PRON.map((p,i)=>`<tr><td><b class="es">${p}</b></td><td>${PRON_EN[i]}</td></tr>`).join('')}</tbody></table>`)}
     <p><span class="es">tú</span> is for a friend or family member. <span class="es">usted</span> is for a teacher, a stranger, or an adult you respect. <span class="es">vosotros</span> is only used in Spain, so most US classes skip it.</p>
     <p class="tip">Spanish often drops the pronoun because the verb ending already tells you who. <span class="es">Hablo español</span> = I speak Spanish.</p>
