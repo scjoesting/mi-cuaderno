@@ -200,6 +200,10 @@ details ul{margin:0;padding-left:20px}
 .summary-nums .w{background:var(--warn-soft);color:var(--warn)}
 .summary-nums .b{background:var(--bad-soft);color:var(--bad)}
 .footer{color:var(--muted);font-size:14px;display:flex;flex-direction:column;gap:10px}
+.footer .btn{padding:8px 12px;font-size:14px}
+.warnText{color:var(--warn);font-weight:700}
+.bk{display:flex;flex-direction:column;gap:10px;background:var(--surface-2);border-radius:12px;padding:14px;color:var(--ink)}
+.bk textarea{width:100%;min-height:96px;border:1px solid var(--line);border-radius:10px;padding:10px;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface);color:var(--ink);resize:vertical;word-break:break-all}
 .sr{position:absolute;left:-9999px}
 @media (prefers-reduced-motion: reduce){.fc-inner,.bar i,.btn{transition:none}}
 /* ---------- Phone layout (window narrower than 640px) ---------- */
@@ -512,6 +516,58 @@ function render(){
   ({home:renderHome,cards:renderCards,quiz:renderQuiz,verbs:renderVerbs,notes:renderNotes,tutor:renderTutor})[view]();
 }
 
+/* ============================ SAVE / IMPORT PROGRESS ============================ */
+function b64(u8){ let t=''; for(let i=0;i<u8.length;i+=0x8000) t+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000)); return btoa(t); }
+function unb64(t){ const bin=atob(t); const u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i); return u8; }
+async function encodeProgress(){
+  const json=JSON.stringify(P);
+  try{ if('CompressionStream' in window){ const cs=new CompressionStream('gzip'); const w=cs.writable.getWriter(); w.write(new TextEncoder().encode(json)); w.close(); const buf=await new Response(cs.readable).arrayBuffer(); return 'MC1:'+b64(new Uint8Array(buf)); } }catch(e){}
+  return 'MC0:'+b64(new TextEncoder().encode(json));
+}
+async function decodeProgress(code){
+  const m=String(code).replace(/\s+/g,'').match(/^MC([01]):([A-Za-z0-9+/=]+)$/); if(!m) throw new Error('format');
+  const u8=unb64(m[2]); let json;
+  if(m[1]==='1'){ const ds=new DecompressionStream('gzip'); const w=ds.writable.getWriter(); w.write(u8); w.close(); json=await new Response(ds.readable).text(); }
+  else json=new TextDecoder().decode(u8);
+  const o=JSON.parse(json); if(!o||typeof o!=='object'||typeof o.cards!=='object') throw new Error('format'); return o;
+}
+function mergeProgress(o){ // higher box, more reviews and the later due date win; nothing is dropped
+  let merged=0;
+  const cards=Object.assign({},P.cards);
+  for(const id in (o.cards||{})){ const a=cards[id], b=o.cards[id]; if(!b||typeof b!=='object') continue; merged++; cards[id]= a? {b:Math.max(a.b||0,b.b||0), d:Math.max(a.d||0,b.d||0), s:Math.max(a.s||0,b.s||0), r:Math.max(a.r||0,b.r||0)} : b; }
+  const verbs=Object.assign({},P.verbs); const ov=(o.verbs&&typeof o.verbs.r==='number')?{type:{r:o.verbs.r,w:o.verbs.w,recent:[]}}:(o.verbs||{});
+  for(const l in ov){ const a=verbs[l], b=ov[l]; verbs[l]= a? {r:Math.max(a.r||0,b.r||0), w:Math.max(a.w||0,b.w||0), recent:((b.recent||[]).length>=(a.recent||[]).length)?(b.recent||[]):(a.recent||[])} : b; }
+  const days=[...new Set([...(P.days||[]),...(o.days||[])])].sort();
+  P={cards,verbs,days,settings:Object.assign({},o.settings||{},P.settings),meta:Object.assign({},o.meta||{},P.meta||{})};
+  save(); return merged;
+}
+function saveAge(){ const t=P.meta&&P.meta.lastSave; return t? Math.floor((Date.now()-t)/864e5) : null; }
+function saveLabel(){ const a=saveAge(); return a===null?'Never saved.':a===0?'Saved today.':a===1?'Saved yesterday.':'Saved '+a+' days ago.'; }
+const inClaudeViewer=!!(window.claude&&typeof window.claude.use==='function');
+async function showSave(){
+  const area=$('#bkArea'); area.hidden=false;
+  area.innerHTML='<p class="sub">Making your code…</p>';
+  const code=await encodeProgress();
+  P.meta=P.meta||{}; P.meta.lastSave=Date.now(); save(); $('#lastSave').textContent=saveLabel(); $('#lastSave').className='';
+  area.innerHTML=`<div class="bk"><p><b>Your progress code.</b> Paste it somewhere safe: a note, a Google Doc, or an email to yourself. Import it later to get everything back.</p>
+    <textarea id="bkCode" readonly aria-label="Progress code">${esc(code)}</textarea>
+    <div class="row"><button class="btn primary" id="bkCopy">Copy code</button>${inClaudeViewer?'':'<button class="btn" id="bkDown">Download as file</button>'}<button class="btn ghost" id="bkClose">Close</button><span class="sub" id="bkMsg"></span></div></div>`;
+  $('#bkCode').onclick=e=>e.target.select();
+  $('#bkCopy').onclick=async()=>{ try{ await navigator.clipboard.writeText(code); $('#bkMsg').textContent='Copied.'; }catch(e){ $('#bkCode').select(); $('#bkMsg').textContent='Press Ctrl+C to copy.'; } };
+  if($('#bkDown')) $('#bkDown').onclick=()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([code],{type:'text/plain'})); a.download='mi-cuaderno-progress-'+today()+'.txt'; document.body.appendChild(a); a.click(); a.remove(); $('#bkMsg').textContent='Downloaded.'; };
+  $('#bkClose').onclick=()=>{ area.hidden=true; area.innerHTML=''; };
+}
+function showImport(){
+  const area=$('#bkArea'); area.hidden=false;
+  area.innerHTML=`<div class="bk"><p><b>Import progress.</b> Paste a code you saved earlier, or choose the downloaded file. It merges with what is already here.</p>
+    <textarea id="bkIn" placeholder="Paste your progress code here…" aria-label="Progress code"></textarea>
+    <div class="row"><button class="btn primary" id="bkGo">Import</button><label class="btn">Choose file<input type="file" id="bkFile" accept=".txt,text/plain" class="sr"></label><button class="btn ghost" id="bkClose">Close</button><span class="sub" id="bkMsg"></span></div></div>`;
+  const doImport=async(text)=>{ try{ const o=await decodeProgress(text); const n=mergeProgress(o); render(); alert('Imported. '+n+' card'+(n===1?'':'s')+' merged in.'); }catch(e){ $('#bkMsg').textContent='That does not look like a Mi Cuaderno progress code.'; } };
+  $('#bkGo').onclick=()=>doImport($('#bkIn').value);
+  $('#bkFile').onchange=e=>{ const f=e.target.files[0]; if(f) f.text().then(doImport); };
+  $('#bkClose').onclick=()=>{ area.hidden=true; area.innerHTML=''; };
+}
+
 /* ============================ HOME ============================ */
 function greeting(){ const h=new Date().getHours(); return h<12?'¡Buenos días!':h<19?'¡Buenas tardes!':'¡Buenas noches!'; }
 function renderHome(){
@@ -559,15 +615,21 @@ function renderHome(){
       <label class="check"><input type="checkbox" id="vosotros" ${P.settings.vosotros?'checked':''}> Include <span class="es">vosotros</span> in verb drills (Spain form, skipped in most US classes)</label>
     </div>
     <div class="row between">
-      <span>Progress is saved in this browser on this device.</span>
+      <span>Progress lives in this browser. <span id="lastSave" class="${saveAge()===null||saveAge()>14?'warnText':''}">${saveLabel()}</span></span>
+      <span class="row"><button class="btn" id="bkSave">Save progress</button><button class="btn" id="bkImport">Import progress</button></span>
+    </div>
+    <div id="bkArea" hidden></div>
+    <div class="row between">
+      <span class="sub" style="font-size:13px">Save progress gives you a code to keep somewhere safe. Import merges a code back in, so nothing here is lost.</span>
       <button class="btn ghost" id="reset" style="color:var(--bad)">Reset all progress</button>
     </div>
   </section>`;
+  $('#bkSave').onclick=showSave; $('#bkImport').onclick=showImport;
   $('#startSession').onclick=()=>{ const ses=buildSession(); if(!ses.ids.length){ const u=weakestUnit(); startCards(u.cards.map((c,i)=>cardId(u,i)),u.name); return; } startCards(ses.ids,'La sesión de hoy'); };
   main.querySelectorAll('[data-study]').forEach(b=>b.onclick=()=>{ const u=UNITS.find(x=>x.id===b.dataset.study); startCards(shuffle(u.cards.map((c,i)=>cardId(u,i))),u.name); });
   main.querySelectorAll('[data-quiz]').forEach(b=>b.onclick=()=>startQuiz(b.dataset.quiz));
   $('#vosotros').onchange=e=>{ P.settings.vosotros=e.target.checked; save(); };
-  $('#reset').onclick=()=>{ if(confirm('Erase all your progress? This cannot be undone.')){ P={cards:{},verbs:{},days:[],settings:P.settings}; save(); render(); } };
+  $('#reset').onclick=()=>{ if(confirm('Erase all your progress? This cannot be undone.')){ P={cards:{},verbs:{},days:[],settings:P.settings,meta:{}}; save(); render(); } };
 }
 
 /* ============================ FLASHCARDS ============================ */
