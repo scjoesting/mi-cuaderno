@@ -18,7 +18,8 @@ Your progress is saved in the browser you use, so stick with one browser on one 
 | **Tarjetas** (Flashcards) | 323 words across 11 units. Missed words come back sooner, known words later |
 | **Prueba** (Quiz) | 10 multiple-choice questions per unit, including *el* vs *la* |
 | **Verbos** (Verb drill) | Two levels she picks: *Build* (tap the right ending from the verb's own table) and *Type* (write the form, with an accent keyboard). Covers regular verbs plus ser, estar, tener, ir, hacer, querer |
-| **Apuntes** (Notes) | Plain-English grammar notes: ser vs estar, gustar, gender, adjectives, questions, numbers, time |
+| **Apuntes** (Notes) | Plain-English grammar notes: ser vs estar, gustar, gender, adjectives, questions, numbers, time. Every section has a *Practice this* row that launches a matching drill |
+| **Grammar drills** | Ten-question drills on one rule each: which pronoun, ser or estar, gusta or gustan, el or la, adjective agreement, telling time. Reachable from Apuntes or the Prueba tab |
 | **Tutor** | Ask Claude anything at a Spanish 1 level (claude.ai only) |
 
 Tap the speaker icon on any card to hear it pronounced with your device's Spanish voice.

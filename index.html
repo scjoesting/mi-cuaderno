@@ -165,6 +165,8 @@ label.check input{width:18px;height:18px;accent-color:var(--accent)}
 .optx .hint{grid-column:2;font-size:13px;color:var(--muted)}
 .tag.good{background:var(--good);color:#fff}
 .tag.bad{background:var(--bad);color:#fff}
+.practice{margin-top:4px;padding-top:12px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:8px}
+.practice .btn{padding:8px 12px;font-size:14px}
 .key{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;min-width:40px;height:40px;font-size:18px;font-weight:700}
 .key:hover{background:var(--accent-soft)}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
@@ -399,6 +401,7 @@ const VERB_GROUPS = [
  {id:'reg',label:'All regular verbs',f:v=>v.type!=='irr'},
  {id:'serestar',label:'Ser & estar',f:v=>v.inf==='ser'||v.inf==='estar'},
  {id:'tenerir',label:'Tener & ir',f:v=>v.inf==='tener'||v.inf==='ir'},
+ {id:'tih',label:'Tener, ir & hacer',f:v=>['tener','ir','hacer'].includes(v.inf)},
  {id:'irr',label:'All irregular (ser, estar, tener, ir, hacer, querer)',f:v=>v.type==='irr'},
  {id:'all',label:'Everything mixed',f:v=>true}
 ];
@@ -626,6 +629,83 @@ document.addEventListener('keydown',e=>{
   if(FC.flipped&&map[e.key]){ e.preventDefault(); gradeCard(map[e.key]); }
 });
 
+/* ============================ GRAMMAR DRILLS ============================ */
+// Short targeted drills launched from the grammar notes. Every option is a real form from the same set.
+const NUM_WORDS=['una','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce'];
+function timePhrase(h,m){ if(m===45){ const h2=h%12+1; return (h2===1?'Es la una':'Son las '+NUM_WORDS[h2-1])+' menos cuarto'; } return (h===1?'Es la una':'Son las '+NUM_WORDS[h-1])+(m===15?' y cuarto':m===30?' y media':''); }
+function mc(prompt,ask,answer,options,why,extra){ return Object.assign({type:'custom',prompt,ask,answer,why,options:shuffle(options.map(l=>({l,c:l===answer})))},extra||{}); }
+const DRILLS={
+ pronouns:{title:'Which pronoun?',build(){
+   const cues=[['I','yo'],['you, talking to a friend','tú'],['you, talking to your teacher','usted'],['he','él'],['she','ella'],['we, a group with boys','nosotros'],['we, all girls','nosotras'],['they, boys or a mixed group','ellos'],['they, all girls','ellas'],['you all','ustedes']];
+   const all=cues.map(c=>c[1]);
+   return shuffle(cues).map(([en,es])=>mc(en,'Which pronoun?',es,[es,...shuffle(all.filter(x=>x!==es)).slice(0,3)],`"${en}" is ${es}.`,{en:true,full:es})); }},
+ serestar:{title:'Ser or estar?',build(){
+   const bank=[
+    ['Yo ___ de Texas.','soy','estoy','Where you are from is Origin → ser (the O in DOCTOR).'],
+    ['Mi hermana ___ muy inteligente.','es','está','A personality trait is a Characteristic → ser.'],
+    ['Nosotros ___ en la biblioteca.','estamos','somos','Where someone is right now is Location → estar (the L in PLACE).'],
+    ['Hoy ___ lunes.','es','está','Days and dates are Time → ser.'],
+    ['¿Cómo ___ tú hoy?','estás','eres','How someone feels today is a Condition → estar.'],
+    ['Los estudiantes ___ cansados.','están','son','Being tired is a Condition that changes → estar.'],
+    ['Mi madre ___ profesora.','es','está','A job is an Occupation → ser.'],
+    ['La sopa ___ fría.','está','es','The soup is cold right now, a Condition → estar.'],
+    ['Ellos ___ mis primos.','son','están','Family is a Relationship → ser.'],
+    ['Yo ___ muy contenta hoy.','estoy','soy','Feeling happy today is an Emotion → estar.'],
+    ['¿De dónde ___ usted?','es','está','Asking where someone is from is Origin → ser.'],
+    ['El libro ___ en la mochila.','está','es','Where the book is is Location → estar.'],
+    ['___ las tres de la tarde.','Son','Están','Telling time is Time → ser.'],
+    ['Tú ___ alto y moreno.','eres','estás','Looks that do not change are Description → ser.'],
+    ['Mis amigos ___ en el parque.','están','son','Location → estar.'],
+    ['La clase de español ___ divertida.','es','está','What the class is like is a Characteristic → ser.']];
+   return shuffle(bank).slice(0,10).map(([t,a,b,why])=>mc(t,'Ser or estar?',a,[a,b],why,{full:t.replace('___',a)})); }},
+ gustar:{title:'Gusta or gustan?',build(){
+   const bank=[
+    ['Me ___ la pizza.','gusta',['gusta','gustan'],'One thing (la pizza) → gusta.'],
+    ['Me ___ los perros.','gustan',['gusta','gustan'],'More than one thing (los perros) → gustan.'],
+    ['¿Te ___ bailar?','gusta',['gusta','gustan'],'An activity (a verb) always takes gusta.'],
+    ['No me ___ las matemáticas.','gustan',['gusta','gustan'],'Las matemáticas is plural → gustan.'],
+    ['Nos ___ los deportes.','gustan',['gusta','gustan'],'Los deportes is plural → gustan.'],
+    ['Me ___ el helado y el chocolate.','gustan',['gusta','gustan'],'Two things together count as plural → gustan.'],
+    ['Le ___ cantar y bailar.','gusta',['gusta','gustan'],'Activities take gusta, even two of them.'],
+    ['A Marta ___ gusta leer.','le',['me','te','le','nos','les'],'Marta is "she", so the pronoun is le.'],
+    ['A mis padres ___ gusta el café.','les',['me','te','le','nos','les'],'My parents are "they" → les.'],
+    ['¿A ti ___ gusta la música?','te',['me','te','le','nos','les'],'"A ti" means you (a friend) → te.'],
+    ['A Juan y a mí ___ gusta nadar.','nos',['me','te','le','nos','les'],'Juan and I are "we" → nos.'],
+    ['A usted ___ gusta la clase.','le',['me','te','le','nos','les'],'Usted (you, formal) uses le, just like he and she.'],
+    ['A mí ___ gusta más el verano.','me',['me','te','le','nos','les'],'"A mí" points to me → me.']];
+   return shuffle(bank).slice(0,10).map(([t,a,o,why])=>mc(t,'Fill in the blank',a,o,why,{full:t.replace('___',a)})); }},
+ articles:{title:'¿El o la?',build(){
+   const pool=[]; UNITS.forEach(u=>u.cards.forEach((c,i)=>{ if((c[2]==='m'||c[2]==='f')&&/^(el|la) [^\/]+$/.test(c[0])) pool.push({id:cardId(u,i),u,c}); }));
+   return shuffle(pool).slice(0,10).map(x=>{ const noun=x.c[0].replace(/^(el|la) /,''); const ans=x.c[0].split(' ')[0]; return {type:'art',x,prompt:noun,ask:'¿El o la? Which article goes with this noun?',options:[{l:'el',c:ans==='el'},{l:'la',c:ans==='la'}],answer:x.c[0]}; }); }},
+ adjectives:{title:'Make it agree',build(){
+   const bank=[
+    ['La chica es ___.','alto','alta',['alto','alta','altos','altas'],'Chica is feminine singular → -a.'],
+    ['Los chicos son ___.','simpático','simpáticos',['simpático','simpática','simpáticos','simpáticas'],'Chicos is masculine plural → -os.'],
+    ['Mi abuela es ___.','viejo','vieja',['viejo','vieja','viejos','viejas'],'Abuela is feminine singular → -a.'],
+    ['Las clases son ___.','aburrido','aburridas',['aburrido','aburrida','aburridos','aburridas'],'Clases is feminine plural → -as.'],
+    ['El libro es ___.','interesante','interesante',['interesante','interesantes'],'Adjectives ending in -e do not change for gender. Libro is singular, so no -s.'],
+    ['Mis amigas son ___.','divertido','divertidas',['divertido','divertida','divertidos','divertidas'],'Amigas is feminine plural → -as.'],
+    ['El perro es ___.','pequeño','pequeño',['pequeño','pequeña','pequeños','pequeñas'],'Perro is masculine singular → -o.'],
+    ['Ana y Luis son ___.','trabajador','trabajadores',['trabajador','trabajadora','trabajadores','trabajadoras'],'A mixed group uses the masculine plural → trabajadores.'],
+    ['La tarea es ___.','fácil','fácil',['fácil','fáciles'],'Adjectives ending in a consonant do not change for gender. Singular, so no -es.'],
+    ['Los exámenes son ___.','difícil','difíciles',['difícil','difíciles'],'Plural of a consonant ending adds -es.'],
+    ['Mi hermano es ___.','rubio','rubio',['rubio','rubia','rubios','rubias'],'Hermano is masculine singular → -o.'],
+    ['Las mochilas son ___.','nuevo','nuevas',['nuevo','nueva','nuevos','nuevas'],'Mochilas is feminine plural → -as.']];
+   return shuffle(bank).slice(0,10).map(([t,base,a,o,why])=>mc(t+' ('+base+')','Pick the form that agrees',a,o,why,{full:t.replace('___',a)})); }},
+ time:{title:'¿Qué hora es?',build(){
+   const MIN=[0,15,30,45]; const items=[]; const seen=new Set();
+   while(items.length<10){ const h=1+Math.floor(Math.random()*12), m=MIN[Math.floor(Math.random()*4)]; const key=h+':'+m; if(seen.has(key)) continue; seen.add(key);
+     const ans=timePhrase(h,m); const ds=new Set(); while(ds.size<3){ const d=timePhrase(1+Math.floor(Math.random()*12),MIN[Math.floor(Math.random()*4)]); if(d!==ans) ds.add(d); }
+     const one = m===45 ? (h%12+1)===1 : h===1;
+     const why=(one?'One o\'clock uses "es la". ':'Every hour after one uses "son las". ')+(m===15?'":15" is "y cuarto".':m===30?'":30" is "y media".':m===45?'":45" counts back from the next hour: "menos cuarto".':'On the hour, just the number.');
+     items.push(mc(h+':'+String(m).padStart(2,'0'),'What time is it?',ans,[ans,...ds],why,{full:ans})); }
+   return items; }}
+};
+function startDrill(key){ const d=DRILLS[key]; Q={qs:d.build(),i:0,score:0,answered:null,title:d.title,drill:key}; go('quiz'); }
+function goVerbs(group){ V.group=group; V.cur=null; V.state='ask'; go('verbs'); }
+function practice(list){ return `<div class="practice"><span class="eyebrow">Practice this</span><div class="row">${list.map(a=>`<button class="btn" type="button" data-act="${a.act}" data-arg="${a.arg}">${a.label}${a.sub?` <small>${a.sub}</small>`:''}</button>`).join('')}</div></div>`; }
+function wirePractice(){ main.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{ const a=b.dataset.arg; switch(b.dataset.act){ case 'drill': startDrill(a); break; case 'verbs': goVerbs(a); break; case 'quiz': startQuiz(a); break; case 'cards': { const u=UNITS.find(x=>x.id===a); startCards(shuffle(u.cards.map((c,i)=>cardId(u,i))),u.name); } } }); }
+
 /* ============================ QUIZ ============================ */
 let Q=null;
 function makeQuestion(x,pool){
@@ -645,22 +725,27 @@ function startQuiz(unitId){
   // favor weaker cards: sort by box then shuffle within
   const chosen=shuffle(pool).sort((a,b)=>prog(a.id).b-prog(b.id).b).slice(0,Math.min(pool.length,n*2)); 
   const qs=shuffle(chosen).slice(0,n).map(x=>makeQuestion(x,pool));
-  Q={qs,i:0,score:0,answered:null,title}; go('quiz');
+  Q={qs,i:0,score:0,answered:null,title,unitId}; go('quiz');
 }
 function renderQuiz(){
   if(!Q){
     main.innerHTML=`<section class="panel"><div class="eyebrow">Prueba · Quiz</div><h2 class="h2">Ten quick questions</h2>
       <p class="sub" style="margin-top:6px">Multiple choice, mixed directions, plus <span class="es">el</span> or <span class="es">la</span> for nouns. Wrong answers get a quick explanation.</p>
       <div class="row" style="margin-top:14px"><select id="qUnit" aria-label="Choose a unit"><option value="studied">Everything I have studied</option>${UNITS.map(u=>`<option value="${u.id}">${esc(u.name)} · ${esc(u.en)}</option>`).join('')}</select>
-      <button class="btn primary" id="qStart">Empezar <small>start</small></button></div></section>`;
-    $('#qStart').onclick=()=>startQuiz($('#qUnit').value); return;
+      <button class="btn primary" id="qStart">Empezar <small>start</small></button></div>
+      <div class="eyebrow" style="margin-top:22px">Grammar drills</div>
+      <p class="sub" style="margin:4px 0 10px">Ten quick questions on one rule. These also live under each section in Apuntes.</p>
+      <div class="chips">${Object.entries(DRILLS).map(([k,d])=>`<button class="chip" type="button" data-act="drill" data-arg="${k}">${esc(d.title)}</button>`).join('')}</div></section>`;
+    $('#qStart').onclick=()=>startQuiz($('#qUnit').value); wirePractice(); return;
   }
   if(Q.i>=Q.qs.length){
     const s=Q.score,n=Q.qs.length; const msg= s===n?'¡Perfecto! 100%.': s>=n*0.8?'¡Excelente! You are getting this.': s>=n*0.6?'¡Bien! A few more rounds and this unit is yours.':'Good start. Review these words with flashcards, then try again.';
+    const hasCards=Q.qs.some(q=>q.x);
     main.innerHTML=`<section class="panel lift"><div class="eyebrow">${esc(Q.title)}</div><h2 class="h2">${s} / ${n} · ${msg}</h2>
-      <div class="row" style="margin-top:18px"><button class="btn primary" id="qAgain">Try again</button><button class="btn" id="qCards">Flashcards for the ones I missed</button><button class="btn ghost" id="qHome">Back to Hoy</button></div></section>`;
-    $('#qAgain').onclick=()=>startQuiz(Q.unitId||'studied'); $('#qHome').onclick=()=>{ Q=null; go('home'); };
-    $('#qCards').onclick=()=>{ const ids=[...new Set(Q.qs.filter(q=>q.wrong).map(q=>q.x.id))]; if(!ids.length){ alert('You missed nothing!'); return; } startCards(ids,Q.title+' · missed'); };
+      <div class="row" style="margin-top:18px"><button class="btn primary" id="qAgain">Try again</button>${hasCards?'<button class="btn" id="qCards">Flashcards for the ones I missed</button>':''}${Q.drill?'<button class="btn" id="qNotes">Read the rule in Apuntes</button>':''}<button class="btn ghost" id="qHome">Back to Hoy</button></div></section>`;
+    $('#qAgain').onclick=()=>Q.drill?startDrill(Q.drill):startQuiz(Q.unitId||'studied'); $('#qHome').onclick=()=>{ Q=null; go('home'); };
+    if($('#qNotes')) $('#qNotes').onclick=()=>{ Q=null; go('notes'); };
+    if($('#qCards')) $('#qCards').onclick=()=>{ const ids=[...new Set(Q.qs.filter(q=>q.wrong&&q.x).map(q=>q.x.id))]; if(!ids.length){ alert('You missed nothing!'); return; } startCards(ids,Q.title+' · missed'); };
     return;
   }
   const q=Q.qs[Q.i]; const letters='ABCD';
@@ -668,24 +753,32 @@ function renderQuiz(){
     <div class="row between"><span class="eyebrow">${esc(Q.title)}</span><span class="sub" style="font-variant-numeric:tabular-nums">${Q.i+1} / ${Q.qs.length} · ${Q.score} right</span></div>
     <div class="bar" style="margin:10px 0 18px"><i style="width:${pct(Q.i/Q.qs.length)}%"></i></div>
     <div class="eyebrow">${q.ask}</div>
-    <div class="row" style="margin:6px 0 18px"><div class="prompt" ${q.type!=='en2es'?'lang="es"':''}>${esc(q.prompt)}</div>${q.say?speakBtn(q.say):''}</div>
+    <div class="row" style="margin:6px 0 18px"><div class="prompt" ${(q.type!=='en2es'&&!q.en)?'lang="es"':''}>${esc(q.prompt)}</div>${q.say?speakBtn(q.say):''}</div>
     <div class="opts">${q.options.map((o,i)=>{ let cls=''; if(Q.answered!==null){ if(o.c) cls='right'; else if(i===Q.answered) cls='wrong'; } return `<button class="opt ${cls}" data-i="${i}" ${Q.answered!==null?'disabled':''}><span class="k">${letters[i]}</span><span ${q.type!=='es2en'?'lang="es"':''}>${esc(o.l)}</span></button>`; }).join('')}</div>
     <div id="qFeed" style="margin-top:14px"></div>
   </section>`;
   main.querySelectorAll('.opt').forEach(b=>b.onclick=()=>answer(+b.dataset.i));
   if(Q.answered!==null){
-    const o=q.options[Q.answered]; const right=o.c; const [es,en,g]=q.x.c;
-    let expl='';
-    if(!right){
-      if(q.type==='art') expl=`Explain to a Spanish 1 student why the noun "${q.prompt}" uses "${q.answer.split(' ')[0]}" (${q.answer} = ${en}). Mention the common ending rule (-o masculine, -a feminine) and whether this word follows it or is an exception. 2-3 short sentences.`;
-      else expl=`A Spanish 1 student thought "${es}" meant "${q.type==='es2en'?o.l:q.prompt}" but "${es}" means "${en}"${q.type==='en2es'?` (they chose "${o.l}" instead)`:''}. In 2-3 short sentences give a memory trick for "${es}" and one simple example sentence with its English meaning.`;
+    const o=q.options[Q.answered]; const right=o.c;
+    let expl='', detail='';
+    if(q.x){
+      const [es,en]=q.x.c; detail=`<span lang="es" class="es">${esc(es)}</span> = ${esc(en)}`;
+      if(!right){
+        if(q.type==='art') expl=`Explain to a Spanish 1 student why the noun "${q.prompt}" uses "${q.answer.split(' ')[0]}" (${q.answer} = ${en}). Mention the common ending rule (-o masculine, -a feminine) and whether this word follows it or is an exception. 2-3 short sentences.`;
+        else expl=`A Spanish 1 student thought "${es}" meant "${q.type==='es2en'?o.l:q.prompt}" but "${es}" means "${en}"${q.type==='en2es'?` (they chose "${o.l}" instead)`:''}. In 2-3 short sentences give a memory trick for "${es}" and one simple example sentence with its English meaning.`;
+      }
+    } else {
+      detail=`${q.full?`<b class="es" lang="es">${esc(q.full)}</b> ${speakBtn(q.full)}<br>`:''}${esc(q.why||'')}`;
+      if(!right) expl=`A Spanish 1 student answered "${o.l}" for "${q.prompt}" but the answer is "${q.answer}". The rule: ${q.why||''} In 2-3 short sentences, explain it simply and give a memory trick.`;
     }
-    $('#qFeed').innerHTML=`<div class="feedback ${right?'good':'bad'}"><b>${right?'¡Correcto!':'Not quite.'}</b><span class="ink">${right?'':`The answer is <b class="es" lang="es">${esc(q.answer)}</b>. `}<span lang="es" class="es">${esc(es)}</span> = ${esc(en)}</span>${right?'':explainBox(expl)}</div>
+    $('#qFeed').innerHTML=`<div class="feedback ${right?'good':'bad'}"><b>${right?'¡Correcto!':'Not quite.'}</b><span class="ink">${right?'':`The answer is <b class="es" lang="es">${esc(q.answer)}</b>. `}${detail}</span>${right?'':explainBox(expl)}</div>
       <div class="row" style="margin-top:12px"><button class="btn primary" id="qNext">${Q.i+1<Q.qs.length?'Siguiente <small>next<span class="khint"> · enter</span></small>':'See my score'}</button></div>`;
     $('#qNext').onclick=()=>{ Q.i++; Q.answered=null; renderQuiz(); }; $('#qNext').focus();
   }
 }
-function answer(i){ if(Q.answered!==null) return; const q=Q.qs[Q.i]; Q.answered=i; const right=q.options[i].c; if(right){ Q.score++; grade(q.x.id,'got'); } else { q.wrong=true; grade(q.x.id,'miss'); } if(q.type!=='en2es'||right) say(q.x.c[0]); renderQuiz(); }
+function answer(i){ if(Q.answered!==null) return; const q=Q.qs[Q.i]; Q.answered=i; const right=q.options[i].c; if(right) Q.score++; else q.wrong=true;
+  if(q.x){ grade(q.x.id,right?'got':'miss'); if(q.type!=='en2es'||right) say(q.x.c[0]); } else if(q.full&&!q.en) say(q.full);
+  renderQuiz(); }
 document.addEventListener('keydown',e=>{ if(view!=='quiz'||!Q||Q.i>=Q.qs.length||Q.answered!==null) return; if(e.target.matches('input,select,textarea')) return; const k=e.key.toUpperCase(); const i='ABCD'.indexOf(k); if(i>=0&&i<Q.qs[Q.i].options.length) answer(i); else if(['1','2','3','4'].includes(e.key)&&(+e.key)<=Q.qs[Q.i].options.length) answer(+e.key-1); });
 
 /* ============================ VERB DRILL ============================ */
@@ -802,22 +895,30 @@ function renderNotes(){
     ${t(`<thead><tr><th>Spanish</th><th>English</th></tr></thead><tbody>${PRON.map((p,i)=>`<tr><td><b class="es">${p}</b></td><td>${PRON_EN[i]}</td></tr>`).join('')}</tbody></table>`)}
     <p><span class="es">tú</span> is for a friend or family member. <span class="es">usted</span> is for a teacher, a stranger, or an adult you respect. <span class="es">vosotros</span> is only used in Spain, so most US classes skip it.</p>
     <p class="tip">Spanish often drops the pronoun because the verb ending already tells you who. <span class="es">Hablo español</span> = I speak Spanish.</p>
+  
+    ${practice([{act:'drill',arg:'pronouns',label:'Which pronoun?',sub:'10 questions'},{act:'verbs',arg:'reg',label:'Verb drill',sub:'regular verbs'}])}
   </div></details>
   <details><summary>Regular present tense: -ar, -er, -ir</summary><div class="body">
     <p>Take off the last two letters to get the stem, then add the ending for the person.</p>
     ${t(`<thead><tr><th></th><th>hablar</th><th>comer</th><th>vivir</th></tr></thead><tbody>${PRON.map((p,i)=>`<tr><td>${p}</td><td><b class="es">habl${ENDINGS.ar[i]}</b></td><td><b class="es">com${ENDINGS.er[i]}</b></td><td><b class="es">viv${ENDINGS.ir[i]}</b></td></tr>`).join('')}</tbody>`)}
     <p><span class="es">Yo</span> always ends in <b>-o</b>. <span class="es">Tú</span> always ends in <b>-s</b>. <span class="es">Nosotros</span> always ends in <b>-mos</b>. <span class="es">Ellos</span> always ends in <b>-n</b>.</p>
+  
+    ${practice([{act:'verbs',arg:'ar',label:'Verb drill',sub:'-ar verbs'},{act:'verbs',arg:'erir',label:'Verb drill',sub:'-er / -ir verbs'},{act:'verbs',arg:'reg',label:'Verb drill',sub:'all regular'}])}
   </div></details>
   <details><summary>Ser vs. estar (the two "to be" verbs)</summary><div class="body">
     ${t(`<thead><tr><th></th><th>ser</th><th>estar</th></tr></thead><tbody>${PRON.map((p,i)=>`<tr><td>${p}</td><td><b class="es">${conj(VERBS.find(v=>v.inf==='ser'))[i]}</b></td><td><b class="es">${conj(VERBS.find(v=>v.inf==='estar'))[i]}</b></td></tr>`).join('')}</tbody>`)}
     <p><b>SER</b> is for what something <i>is</i>. Remember <b>DOCTOR</b>: Description, Occupation, Characteristic, Time/date, Origin, Relationship. <span class="es">Soy alta. Es lunes. Somos de Texas.</span></p>
     <p><b>ESTAR</b> is for how or where something is right now. Remember <b>PLACE</b>: Position, Location, Action (-ando/-iendo), Condition, Emotion. <span class="es">Estoy cansado. Está en la biblioteca.</span></p>
     <p class="tip">Quick test: could it change by tomorrow? Then it is probably <span class="es">estar</span>. <span class="es">Estoy triste</span> (today) vs. <span class="es">Soy serio</span> (my personality).</p>
+  
+    ${practice([{act:'drill',arg:'serestar',label:'Ser or estar?',sub:'sentences'},{act:'verbs',arg:'serestar',label:'Verb drill',sub:'ser &amp; estar forms'}])}
   </div></details>
   <details><summary>Tener, ir, and hacer</summary><div class="body">
     ${t(`<thead><tr><th></th><th>tener</th><th>ir</th><th>hacer</th></tr></thead><tbody>${PRON.map((p,i)=>`<tr><td>${p}</td><td><b class="es">${conj(VERBS.find(v=>v.inf==='tener'))[i]}</b></td><td><b class="es">${conj(VERBS.find(v=>v.inf==='ir'))[i]}</b></td><td><b class="es">${conj(VERBS.find(v=>v.inf==='hacer'))[i]}</b></td></tr>`).join('')}</tbody>`)}
     <p><b>Tener expressions</b> use "have" where English uses "am": <span class="es">tengo hambre</span> (I am hungry), <span class="es">tengo sed</span> (thirsty), <span class="es">tengo frío</span> (cold), <span class="es">tengo quince años</span> (I am 15), <span class="es">tengo que estudiar</span> (I have to study).</p>
     <p><b>Ir a + place</b> = going somewhere: <span class="es">Voy a la playa.</span> <b>Ir a + infinitive</b> = going to do something: <span class="es">Voy a estudiar.</span> Note <span class="es">a + el = al</span>: <span class="es">Voy al cine.</span></p>
+  
+    ${practice([{act:'verbs',arg:'tih',label:'Verb drill',sub:'tener, ir &amp; hacer'},{act:'verbs',arg:'tenerir',label:'Verb drill',sub:'tener &amp; ir only'}])}
   </div></details>
   <details><summary>Gustar (to like)</summary><div class="body">
     <p>Gustar literally means "to be pleasing to". So you say "to me is pleasing the pizza". You only need two forms in Spanish 1:</p>
@@ -825,22 +926,30 @@ function renderNotes(){
     <li><b class="es">gustan</b> with MORE THAN ONE thing: <span class="es">Me gustan los perros.</span></li></ul>
     ${t(`<thead><tr><th>Who likes it</th><th>Spanish</th></tr></thead><tbody><tr><td>I</td><td><b class="es">me</b> gusta(n)</td></tr><tr><td>you</td><td><b class="es">te</b> gusta(n)</td></tr><tr><td>he / she / you formal</td><td><b class="es">le</b> gusta(n)</td></tr><tr><td>we</td><td><b class="es">nos</b> gusta(n)</td></tr><tr><td>they / you all</td><td><b class="es">les</b> gusta(n)</td></tr></tbody>`)}
     <p>To say who, add <span class="es">a</span>: <span class="es">A Marta le gusta leer.</span> To say no: <span class="es">No me gusta.</span></p>
+  
+    ${practice([{act:'drill',arg:'gustar',label:'Gusta or gustan?',sub:'sentences'},{act:'cards',arg:'actividades',label:'Flashcards',sub:'activities'}])}
   </div></details>
   <details><summary>Nouns, gender, and el / la / un / una</summary><div class="body">
     <p>Every noun is masculine or feminine, even objects. Words ending in <b>-o</b> are usually masculine (<span class="es">el libro</span>). Words ending in <b>-a</b> are usually feminine (<span class="es">la mesa</span>). Also feminine: <b>-ción, -dad</b> (<span class="es">la estación, la ciudad</span>).</p>
     ${t(`<thead><tr><th></th><th>the (one)</th><th>the (many)</th><th>a / an</th><th>some</th></tr></thead><tbody><tr><td>masculine</td><td><b class="es">el</b> libro</td><td><b class="es">los</b> libros</td><td><b class="es">un</b> libro</td><td><b class="es">unos</b> libros</td></tr><tr><td>feminine</td><td><b class="es">la</b> mesa</td><td><b class="es">las</b> mesas</td><td><b class="es">una</b> mesa</td><td><b class="es">unas</b> mesas</td></tr></tbody>`)}
     <p><b>Exceptions to learn:</b> <span class="es">el día, el mapa, el problema, la mano, la foto</span>, and <span class="es">el agua</span> (feminine, but uses <span class="es">el</span> because of the "a" sound).</p>
     <p><b>Plurals:</b> ends in a vowel, add <b>-s</b> (<span class="es">libros</span>). Ends in a consonant, add <b>-es</b> (<span class="es">papeles</span>). A <b>-z</b> becomes <b>-ces</b> (<span class="es">lápiz → lápices</span>).</p>
+  
+    ${practice([{act:'drill',arg:'articles',label:'¿El o la?',sub:'10 nouns'}])}
   </div></details>
   <details><summary>Adjectives must agree</summary><div class="body">
     <p>Adjectives match the noun in gender AND number, and usually come <b>after</b> the noun.</p>
     ${t(`<tbody><tr><td>el chico alt<b>o</b></td><td>los chicos alt<b>os</b></td></tr><tr><td>la chica alt<b>a</b></td><td>las chicas alt<b>as</b></td></tr><tr><td>el libro interesant<b>e</b></td><td>los libros interesant<b>es</b></td></tr></tbody>`)}
     <p>Adjectives ending in <b>-e</b> or a consonant (<span class="es">inteligente, joven, fácil</span>) do not change for gender, only for number. A mixed group of boys and girls uses the masculine plural: <span class="es">Ana y Luis son simpáticos.</span></p>
+  
+    ${practice([{act:'drill',arg:'adjectives',label:'Make it agree',sub:'sentences'},{act:'cards',arg:'descripciones',label:'Flashcards',sub:'adjectives'}])}
   </div></details>
   <details><summary>Asking questions</summary><div class="body">
     <p>Question words always have an accent mark and the sentence starts with <span class="es">¿</span>.</p>
     ${t(`<tbody><tr><td><b class="es">¿Qué?</b></td><td>What?</td><td><span class="es">¿Qué es esto?</span></td></tr><tr><td><b class="es">¿Quién?</b></td><td>Who?</td><td><span class="es">¿Quién es ella?</span></td></tr><tr><td><b class="es">¿Dónde?</b></td><td>Where?</td><td><span class="es">¿Dónde está el baño?</span></td></tr><tr><td><b class="es">¿Cuándo?</b></td><td>When?</td><td><span class="es">¿Cuándo es la fiesta?</span></td></tr><tr><td><b class="es">¿Por qué?</b></td><td>Why?</td><td><span class="es">¿Por qué estudias?</span> — <span class="es">Porque…</span></td></tr><tr><td><b class="es">¿Cómo?</b></td><td>How?</td><td><span class="es">¿Cómo estás?</span></td></tr><tr><td><b class="es">¿Cuánto/a?</b> / <b class="es">¿Cuántos/as?</b></td><td>How much / many?</td><td><span class="es">¿Cuántos años tienes?</span></td></tr><tr><td><b class="es">¿Cuál?</b></td><td>Which?</td><td><span class="es">¿Cuál es tu clase favorita?</span></td></tr></tbody>`)}
     <p>Yes/no questions: just raise your voice at the end, or flip the order. <span class="es">¿Hablas español?</span> = Do you speak Spanish?</p>
+  
+    ${practice([{act:'quiz',arg:'preguntas',label:'Quiz',sub:'question words'},{act:'cards',arg:'preguntas',label:'Flashcards',sub:'question words'}])}
   </div></details>
   <details><summary>Numbers 0–100: the patterns</summary><div class="body">
     <ul><li><b>0–15</b> you just memorize: cero, uno, dos, tres, cuatro, cinco, seis, siete, ocho, nueve, diez, once, doce, trece, catorce, quince.</li>
@@ -848,6 +957,8 @@ function renderNotes(){
     <li><b>21–29</b> = <span class="es">veinti</span> + number: <span class="es">veintiuno, veintidós, veintitrés…</span></li>
     <li><b>31 and up</b> = tens + <span class="es">y</span> + ones: <span class="es">treinta y uno, cuarenta y cinco, noventa y nueve</span>.</li>
     <li>Tens: <span class="es">diez, veinte, treinta, cuarenta, cincuenta, sesenta, setenta, ochenta, noventa, cien</span>. Most end in <b>-enta</b>.</li></ul>
+  
+    ${practice([{act:'quiz',arg:'numeros',label:'Quiz',sub:'numbers'},{act:'cards',arg:'numeros',label:'Flashcards',sub:'numbers'}])}
   </div></details>
   <details><summary>Telling time</summary><div class="body">
     <p><span class="es">¿Qué hora es?</span> = What time is it?</p>
@@ -857,6 +968,8 @@ function renderNotes(){
     <li>Other minutes → <span class="es">y</span> + number: <span class="es">Son las cuatro y diez.</span></li>
     <li>a.m. → <span class="es">de la mañana</span> · afternoon → <span class="es">de la tarde</span> · night → <span class="es">de la noche</span></li>
     <li>"At" a time → <span class="es">a la una / a las dos</span>: <span class="es">La clase es a las ocho.</span></li></ul>
+  
+    ${practice([{act:'drill',arg:'time',label:'¿Qué hora es?',sub:'read the clock'},{act:'cards',arg:'preguntas',label:'Flashcards',sub:'time phrases'}])}
   </div></details>
   <details><summary>Study tips for catching up</summary><div class="body">
     <ul><li><b>Ten minutes every day</b> beats an hour once a week. Tap "Start today's session" and just do the cards it gives you.</li>
@@ -867,6 +980,7 @@ function renderNotes(){
     <li><b>Ask the tutor</b> when a rule does not click. There are no dumb questions in there.</li></ul>
   </div></details>
   </div>`;
+  wirePractice();
 }
 
 /* ============================ TUTOR ============================ */
