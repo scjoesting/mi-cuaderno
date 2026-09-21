@@ -114,6 +114,8 @@ label.check input{width:18px;height:18px;accent-color:var(--accent)}
 .tag.n{background:var(--surface-2);color:var(--muted)}
 .speak{border:1px solid var(--line);background:var(--surface);border-radius:999px;width:40px;height:40px;display:inline-grid;place-items:center;color:var(--accent)}
 .speak:hover{background:var(--accent-soft)}
+.speak.sm{width:26px;height:26px;vertical-align:middle;margin:0 2px 0 4px;flex:none}
+.speak.sm svg{width:15px;height:15px}
 .fc-grade{position:absolute;left:14px;right:14px;bottom:14px;display:flex;flex-direction:column;gap:8px}
 .fc-grade .lbl{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;text-align:center}
 .fc-grade .btns{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
@@ -456,7 +458,22 @@ const canSpeak='speechSynthesis' in window; let esVoice=null;
 function pickVoice(){ try{ const vs=speechSynthesis.getVoices(); esVoice=vs.find(v=>/^es[-_](MX|US|419)/i.test(v.lang))||vs.find(v=>/^es/i.test(v.lang))||null; }catch(e){} }
 if(canSpeak){ pickVoice(); try{ speechSynthesis.onvoiceschanged=pickVoice; }catch(e){} }
 function say(t){ if(!canSpeak) return; try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t.replace(/\s*\(.*?\)\s*/g,' ').replace(/…/g,'')); u.lang=esVoice?esVoice.lang:'es-ES'; if(esVoice) u.voice=esVoice; u.rate=0.85; speechSynthesis.speak(u); }catch(e){} }
-function speakBtn(t){ return canSpeak? '<button class="speak" type="button" data-say="'+esc(t)+'" aria-label="Hear it in Spanish" title="Hear it">'+SPEAKER+'</button>' : ''; }
+function speakBtn(t,sm){ return canSpeak? '<button class="speak'+(sm?' sm':'')+'" type="button" data-say="'+esc(t)+'" aria-label="Hear it in Spanish" title="Hear it">'+SPEAKER+'</button>' : ''; }
+// Put a small speaker after every Spanish word or phrase marked .es inside a container.
+function addSpeakers(root){
+  if(!canSpeak) return;
+  root.querySelectorAll('.es').forEach(el=>{
+    if(el.closest('.feedback,.optx,.fc,.prompt')) return;
+    let t=el.textContent.trim();
+    if(!t||/^-/.test(t)||/[=+→]/.test(t)) return;
+    const td=el.closest('td');
+    let anchor=el;
+    if(/^(el|la|los|las|un|una|unos|unas)$/i.test(t)){ if(!td) return; t=td.textContent.trim(); anchor=null; }
+    else if(td){ const tr=td.parentElement; const first=tr.querySelector('td'); const ft=first?first.textContent.trim():''; if(first!==td&&PRON.includes(ft)) t=ft.split(' / ')[0]+' '+t; }
+    const b=document.createElement('button'); b.type='button'; b.className='speak sm'; b.setAttribute('data-say',t); b.setAttribute('aria-label','Hear it in Spanish'); b.title='Hear it'; b.innerHTML=SPEAKER;
+    if(anchor) anchor.insertAdjacentElement('afterend',b); else td.appendChild(b);
+  });
+}
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-say]'); if(b){ e.stopPropagation(); say(b.getAttribute('data-say')); } });
 
 // Accent keyboard: inserts into the last focused text input
@@ -796,7 +813,7 @@ function optionsBreakdown(v,pi,opts,picked){
     const cls=(o.i===pi?'correct':'')+(o.i===picked?' picked':'');
     const tag=o.i===pi?'<span class="tag good">correct</span>':o.i===picked?'<span class="tag bad">your pick</span>':'';
     const hint=v.type==='irr'?`irregular form for ${esc(PRON_EN[o.i])}`:ENDING_HINTS[o.i];
-    return `<li class="${cls.trim()}"><span class="ch" lang="es">${esc(o.label)}</span><span><span lang="es">${esc(PRON[o.i])}</span> <span class="sub">(${esc(PRON_EN[o.i])})</span>${v.type==='irr'?'':` → <b class="es" lang="es">${esc(f[o.i])}</b>`} ${tag}</span><span class="hint">${hint}</span></li>`; }).join('')}</ul></div>`;
+    return `<li class="${cls.trim()}"><span class="ch" lang="es">${esc(o.label)}</span><span><span lang="es">${esc(PRON[o.i])}</span> <span class="sub">(${esc(PRON_EN[o.i])})</span>${v.type==='irr'?'':` → <b class="es" lang="es">${esc(f[o.i])}</b>`} ${speakBtn(PRON[o.i].split(' / ')[0]+' '+f[o.i],true)} ${tag}</span><span class="hint">${hint}</span></li>`; }).join('')}</ul></div>`;
 }
 function verbTable(v,hi){ const f=conj(v); return `<div class="tbl"><table><thead><tr><th>${esc(v.inf)} · ${esc(v.en)}</th><th></th></tr></thead><tbody>${PRON.map((p,i)=>(i===4&&!P.settings.vosotros)?'':`<tr><td>${esc(p)}<br><span class="sub" style="font-size:12px">${esc(PRON_EN[i])}</span></td><td class="${i===hi?'hl':''}"><b class="es" lang="es">${esc(f[i])}</b></td></tr>`).join('')}</tbody></table></div>`; }
 function recordVerb(kind){
@@ -945,7 +962,7 @@ function renderNotes(){
     ${practice([{act:'quiz',arg:'preguntas',label:'Quiz',sub:'question words'},{act:'cards',arg:'preguntas',label:'Flashcards',sub:'question words'}])}
   </div></details>
   <details><summary>Numbers 0–100: the patterns</summary><div class="body">
-    <ul><li><b>0–15</b> you just memorize: cero, uno, dos, tres, cuatro, cinco, seis, siete, ocho, nueve, diez, once, doce, trece, catorce, quince.</li>
+    <ul><li><b>0–15</b> you just memorize: <span class="es">cero, uno, dos, tres, cuatro, cinco, seis, siete, ocho, nueve, diez, once, doce, trece, catorce, quince</span>.</li>
     <li><b>16–19</b> = <span class="es">dieci</span> + number: <span class="es">dieciséis, diecisiete, dieciocho, diecinueve</span>.</li>
     <li><b>21–29</b> = <span class="es">veinti</span> + number: <span class="es">veintiuno, veintidós, veintitrés…</span></li>
     <li><b>31 and up</b> = tens + <span class="es">y</span> + ones: <span class="es">treinta y uno, cuarenta y cinco, noventa y nueve</span>.</li>
@@ -973,7 +990,7 @@ function renderNotes(){
     <li><b>Ask the tutor</b> when a rule does not click. There are no dumb questions in there.</li></ul>
   </div></details>
   </div>`;
-  wirePractice();
+  wirePractice(); addSpeakers(main);
 }
 
 /* ============================ TUTOR ============================ */
