@@ -105,7 +105,7 @@ label.check input{width:18px;height:18px;accent-color:var(--accent)}
 .fc.flipped .fc-inner{transform:rotateY(180deg)}
 .fc-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:28px 24px;border:1px solid var(--line);box-shadow:var(--shadow)}
 .fc-face.front{background:var(--surface)}
-.fc-face.back{background:var(--accent-soft);transform:rotateY(180deg);padding-bottom:118px}
+.fc-face.back{background:var(--accent-soft);transform:rotateY(180deg);padding-bottom:124px}
 .fc-word{font-family:var(--display);font-size:clamp(28px,6vw,44px);font-weight:700;line-height:1.1;text-wrap:balance}
 .fc-hint{position:absolute;bottom:14px;font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 .tag{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.04em}
@@ -116,8 +116,10 @@ label.check input{width:18px;height:18px;accent-color:var(--accent)}
 .speak:hover{background:var(--accent-soft)}
 .fc-grade{position:absolute;left:14px;right:14px;bottom:14px;display:flex;flex-direction:column;gap:8px}
 .fc-grade .lbl{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;text-align:center}
-.fc-grade .btns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.fc-grade .btn{flex-direction:column;gap:2px;padding:10px 6px;line-height:1.2}
+.fc-grade .btns{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.fc-grade .btn{flex-direction:column;gap:3px;padding:10px 6px;line-height:1.2;font-size:16px}
+.fc-grade .btn svg{width:26px;height:26px}
+.fc-grade .btn small{display:block}
 .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;opacity:.7}
 .opts{display:grid;gap:10px;grid-template-columns:1fr}
 @media (min-width:560px){.opts{grid-template-columns:1fr 1fr}}
@@ -205,8 +207,8 @@ details ul{margin:0;padding-left:20px}
   .fc{height:280px}
   .fc-word{font-size:clamp(26px,8vw,36px)}
   .fc-grade{left:10px;right:10px;bottom:10px}
-  .fc-grade .btns{gap:6px}
-  .fc-grade .btn{padding:9px 4px;font-size:14px}
+  .fc-grade .btns{gap:8px}
+  .fc-grade .btn{padding:9px 4px;font-size:15px}
   .fc-grade .btn small{font-size:11px}
   .prompt{font-size:clamp(24px,7vw,32px)}
   .opt{padding:12px 14px;font-size:17px}
@@ -393,8 +395,7 @@ function prog(id){ return P.cards[id]||{b:0,d:0,s:0,r:0}; }
 function grade(id,res){
   const c=Object.assign({},prog(id)); c.s++;
   if(res==='got'){ c.b=Math.min(5,c.b+1); c.r++; c.d=Date.now()+INTERVALS[c.b]*864e5; }
-  else if(res==='almost'){ c.b=Math.max(1,c.b); c.d=Date.now()+864e5; }
-  else { c.b=0; c.d=Date.now(); }
+  else { c.b = c.b>=3 ? 1 : 0; c.d=Date.now(); } // a slip on a well-known word is a lapse, not a full reset
   P.cards[id]=c; markStudied(); save();
 }
 function unitMastery(u){ let s=0; u.cards.forEach((c,i)=>{ s+=Math.min(5,prog(cardId(u,i)).b); }); return s/(5*u.cards.length); }
@@ -420,6 +421,8 @@ function norm(s){ return s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()
 function exact(s){ return s.toLowerCase().replace(/[¿?¡!.,]/g,'').trim().replace(/\s+/g,' '); }
 function pct(x){ return Math.round(x*100); }
 const SPEAKER='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+const THUMB_UP='<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3z"/><path d="M7 11l4-8a2 2 0 0 1 2 2v4h5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 16.8 20H7"/></svg>';
+const THUMB_DOWN='<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 13V4h3a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-3z"/><path d="M17 13l-4 8a2 2 0 0 1-2-2v-4H6a2 2 0 0 1-2-2.3l1.2-6A2 2 0 0 1 7.2 4H17"/></svg>';
 function genderTag(g){ return g==='m'?'<span class="tag m">el · masculine</span>':g==='f'?'<span class="tag f">la · feminine</span>':''; }
 
 // Pronunciation through the browser's Spanish voice
@@ -489,7 +492,7 @@ function renderHome(){
       <button class="btn primary big" id="startSession">Empezar la sesión de hoy <small>Start today's session</small></button>
       <span class="sub">${s.due?`${s.due} to review`:''}${s.due&&s.fresh?' + ':''}${s.fresh?`${s.fresh} new word${s.fresh===1?'':'s'}`:''}${!s.ids.length?'All caught up. Pick a unit below to keep going.':''}</span>
     </div>
-    ${seen===0?`<p class="tip" style="margin-top:14px">First time here? Start with <b>Saludos</b>. Flip each card, say it out loud, then tap how well you knew it. Words you miss come back sooner. Words you know come back later.</p>`:''}
+    ${seen===0?`<p class="tip" style="margin-top:14px">First time here? Start with <b>Saludos</b>. Flip each card, say it out loud, then give it a thumbs up or down. Words you miss come back sooner. Words you know come back later.</p>`:''}
   </section>
 
   <section>
@@ -526,7 +529,7 @@ function renderHome(){
 
 /* ============================ FLASHCARDS ============================ */
 let FC=null;
-function startCards(ids,title){ FC={queue:ids.slice(),i:0,flipped:false,missed:[],requeued:new Set(),stats:{got:0,almost:0,miss:0},title}; go('cards'); }
+function startCards(ids,title){ FC={queue:ids.slice(),i:0,flipped:false,missed:[],stats:{got:0,miss:0},title}; go('cards'); }
 function renderCards(){
   if(!FC){ // picker
     main.innerHTML=`<section class="panel"><div class="eyebrow">Tarjetas · Flashcards</div><h2 class="h2">What do you want to practice?</h2>
@@ -542,9 +545,9 @@ function renderCards(){
   }
   if(FC.i>=FC.queue.length){ // summary
     const st=FC.stats; const uniqMissed=[...new Set(FC.missed)];
-    const msg= st.miss===0? '¡Perfecto! You knew every card.' : st.got>=st.miss? '¡Muy bien! Keep going, the missed ones will come back sooner.' : 'Good work. These take a few rounds. Try the missed ones again right now.';
+    const msg= uniqMissed.length===0? '¡Perfecto! You knew every card.' : uniqMissed.length<=3? '¡Muy bien! Only a few gave you trouble, and you got them in the end.' : 'Good work. You pushed through every card. The tricky ones come back tomorrow.';
     main.innerHTML=`<section class="panel lift"><div class="eyebrow">${esc(FC.title)}</div><h2 class="h2">${msg}</h2>
-      <div class="summary-nums" style="margin-top:16px"><div class="g"><b>${st.got}</b>knew it</div><div class="w"><b>${st.almost}</b>almost</div><div class="b"><b>${st.miss}</b>missed</div></div>
+      <div class="summary-nums" style="margin-top:16px"><div class="g"><b>${st.got}</b>thumbs up</div><div class="b"><b>${st.miss}</b>thumbs down</div><div class="w"><b>${uniqMissed.length}</b>words to watch</div></div>
       <div class="row" style="margin-top:18px">
         ${uniqMissed.length?`<button class="btn primary" id="againMissed">Review the ${uniqMissed.length} I missed</button>`:''}
         <button class="btn" id="againAll">Do this set again</button>
@@ -566,14 +569,13 @@ function renderCards(){
     <div class="fc ${FC.flipped?'flipped':''}" id="fc" role="button" tabindex="0" aria-label="Flashcard. Press to flip.">
       <div class="fc-inner">
         <div class="fc-face front">${front}<span class="fc-hint">tap the card to flip · space</span></div>
-        <div class="fc-face back">${back}${FC.flipped? `<div class="fc-grade"><span class="lbl">How well did you know it?</span><div class="btns">
-          <button class="btn bad" data-g="miss">No lo sabía <small>missed</small><span class="kbd">1</span></button>
-          <button class="btn warn" data-g="almost">Casi <small>almost</small><span class="kbd">2</span></button>
-          <button class="btn good" data-g="got">¡Lo sé! <small>got it</small><span class="kbd">3</span></button>
+        <div class="fc-face back">${back}${FC.flipped? `<div class="fc-grade"><span class="lbl">Did you know it?</span><div class="btns">
+          <button class="btn bad" data-g="miss">${THUMB_DOWN}<span>No lo sabía <small>missed</small></span><span class="kbd">1 or ←</span></button>
+          <button class="btn good" data-g="got">${THUMB_UP}<span>¡Lo sé! <small>got it</small></span><span class="kbd">2 or →</span></button>
         </div></div>`:''}</div>
       </div>
     </div>
-    <p class="sub" style="text-align:center;font-size:14px">Missed cards come back at the end of this set and again tomorrow.</p>
+    <p class="sub" style="text-align:center;font-size:14px">Thumbs down? The card returns later in this set until you get it, and again tomorrow.</p>
   </section>`;
   const flip=()=>{ FC.flipped=!FC.flipped; renderCards(); if(FC.flipped&&dir==='en') say(es); };
   const card=$('#fc');
@@ -585,12 +587,13 @@ function renderCards(){
 }
 function gradeCard(res){
   const id=FC.queue[FC.i]; grade(id,res); FC.stats[res]++;
-  if(res==='miss'){ FC.missed.push(id); if(!FC.requeued.has(id)){ FC.requeued.add(id); FC.queue.push(id); } }
+  if(res==='miss'){ FC.missed.push(id); FC.queue.push(id); }
   FC.i++; FC.flipped=false; renderCards();
 }
 document.addEventListener('keydown',e=>{
   if(view!=='cards'||!FC||FC.i>=FC.queue.length) return; if(e.target.matches('input,select,textarea')) return;
-  if(FC.flipped&&['1','2','3'].includes(e.key)){ gradeCard({'1':'miss','2':'almost','3':'got'}[e.key]); }
+  const map={'1':'miss','ArrowLeft':'miss','2':'got','ArrowRight':'got'};
+  if(FC.flipped&&map[e.key]){ e.preventDefault(); gradeCard(map[e.key]); }
 });
 
 /* ============================ QUIZ ============================ */
@@ -776,7 +779,7 @@ function renderNotes(){
   <details><summary>Study tips for catching up</summary><div class="body">
     <ul><li><b>Ten minutes every day</b> beats an hour once a week. Tap "Start today's session" and just do the cards it gives you.</li>
     <li><b>Say it out loud.</b> Use the speaker button, copy the sound, then say it before you flip. Your mouth remembers too.</li>
-    <li><b>Be honest with the buttons.</b> Tapping "missed" is not failing. It tells the app to show you that word sooner.</li>
+    <li><b>Be honest with the thumbs.</b> Thumbs down is not failing. It brings the word back in a minute, and again tomorrow, which is exactly how it sticks.</li>
     <li><b>Learn nouns with their article.</b> Always <span class="es">la mesa</span>, never just <span class="es">mesa</span>. Then el/la is free.</li>
     <li><b>Verbs: know the endings first.</b> Once -o, -as, -a, -amos, -an is automatic, every regular verb is easy.</li>
     <li><b>Ask the tutor</b> when a rule does not click. There are no dumb questions in there.</li></ul>
