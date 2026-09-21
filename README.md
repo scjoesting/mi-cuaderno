@@ -17,7 +17,7 @@ Your progress is saved in the browser you use, so stick with one browser on one 
 | **Hoy** (Today) | Streak, cards due, and a one-tap daily session that mixes review with new words |
 | **Tarjetas** (Flashcards) | 323 words across 11 units. Missed words come back sooner, known words later |
 | **Prueba** (Quiz) | 10 multiple-choice questions per unit, including *el* vs *la* |
-| **Verbos** (Verb drill) | Type present-tense forms of regular verbs plus ser, estar, tener, ir, hacer, querer. Has an accent keyboard |
+| **Verbos** (Verb drill) | Two levels she picks: *Build* (tap the right ending from the verb's own table) and *Type* (write the form, with an accent keyboard). Covers regular verbs plus ser, estar, tener, ir, hacer, querer |
 | **Apuntes** (Notes) | Plain-English grammar notes: ser vs estar, gustar, gender, adjectives, questions, numbers, time |
 | **Tutor** | Ask Claude anything at a Spanish 1 level (claude.ai only) |
 

@@ -139,6 +139,16 @@ label.check input{width:18px;height:18px;accent-color:var(--accent)}
 .feedback b{font-family:var(--display);font-size:18px}
 .feedback .ink{color:var(--ink)}
 .keys{display:flex;gap:6px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:7px 12px;font-weight:700;color:var(--muted);display:flex;flex-direction:column;align-items:center;line-height:1.1}
+.seg button small{font-weight:400;font-size:11px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.build{display:flex;align-items:baseline;gap:2px;margin-top:14px;font-family:var(--display);font-size:clamp(32px,7vw,48px);font-weight:700;line-height:1.1}
+.build .slot{display:inline-block;min-width:1.8em;border-bottom:4px dashed var(--accent);color:var(--accent)}
+.chips-lg{display:flex;gap:10px;flex-wrap:wrap}
+.chip-lg{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 18px;font-size:22px;font-weight:700;font-family:var(--display);display:inline-flex;gap:8px;align-items:baseline;min-width:76px;justify-content:center;white-space:nowrap;transition:transform .08s}
+.chip-lg:hover{background:var(--accent-soft);border-color:var(--accent)}
+.chip-lg:active{transform:translateY(1px)}
 .key{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;min-width:40px;height:40px;font-size:18px;font-weight:700}
 .key:hover{background:var(--accent-soft)}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
@@ -213,6 +223,8 @@ details ul{margin:0;padding-left:20px}
   .fc-grade .btn{padding:9px 4px;font-size:15px}
   .fc-grade .btn small{font-size:11px}
   .prompt{font-size:clamp(24px,7vw,32px)}
+  .chip-lg{padding:10px 12px;font-size:20px;min-width:0;flex:1 1 30%}
+  .chips-lg{gap:8px}
   .opt{padding:12px 14px;font-size:17px}
   .summary-nums b{font-size:26px}
   .msg{max-width:92%}
@@ -379,8 +391,8 @@ function conj(v){ if(v.forms) return v.forms; const stem=v.inf.slice(0,-2); retu
 /* ============================ PROGRESS ============================ */
 const KEY='micuaderno.v1';
 const INTERVALS=[0,1,3,7,14,30]; // days until a card comes back, by box
-let P = {cards:{}, verbs:{r:0,w:0}, days:[], settings:{vosotros:false, dir:'es'}};
-try{ const raw=localStorage.getItem(KEY); if(raw){ const o=JSON.parse(raw); P=Object.assign(P,o); P.settings=Object.assign({vosotros:false,dir:'es'},o.settings||{}); } }catch(e){}
+let P = {cards:{}, verbs:{}, days:[], settings:{vosotros:false, dir:'es'}};
+try{ const raw=localStorage.getItem(KEY); if(raw){ const o=JSON.parse(raw); P=Object.assign(P,o); P.settings=Object.assign({vosotros:false,dir:'es'},o.settings||{}); if(P.verbs&&typeof P.verbs.r==='number'){ P.verbs={type:{r:P.verbs.r,w:P.verbs.w,recent:[]}}; } if(!P.verbs) P.verbs={}; } }catch(e){}
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(P)); }catch(e){} }
 function today(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function dateStr(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -477,7 +489,7 @@ function renderHome(){
   const s=buildSession(); const due=dueCards().length;
   const known=UNITS.reduce((n,u)=>n+unitKnown(u),0); const total=UNITS.reduce((n,u)=>n+u.cards.length,0);
   const seen=UNITS.reduce((n,u)=>n+u.cards.filter((c,i)=>prog(cardId(u,i)).s>0).length,0);
-  const vt=P.verbs.r+P.verbs.w;
+  const lvl=VLEVELS.find(l=>l.id===vLevel()); const va=vAcc(vLevel());
   main.innerHTML=`
   <section class="panel lift">
     <div class="row between">
@@ -488,7 +500,7 @@ function renderHome(){
       <div class="stat"><b>${streak()}</b><span>day streak</span></div>
       <div class="stat"><b>${due}</b><span>cards due for review</span></div>
       <div class="stat"><b>${known}<span style="font-size:15px;color:var(--muted)"> / ${total}</span></b><span>words you know well</span></div>
-      <div class="stat"><b>${vt?pct(P.verbs.r/vt)+'%':'—'}</b><span>verb drill accuracy</span></div>
+      <div class="stat"><b>${va===null?'—':va+'%'}</b><span>verb drill · ${lvl.en}</span></div>
     </div>
     <div class="row" style="margin-top:18px">
       <button class="btn primary big" id="startSession">Empezar la sesión de hoy <small>Start today's session</small></button>
@@ -526,7 +538,7 @@ function renderHome(){
   main.querySelectorAll('[data-study]').forEach(b=>b.onclick=()=>{ const u=UNITS.find(x=>x.id===b.dataset.study); startCards(shuffle(u.cards.map((c,i)=>cardId(u,i))),u.name); });
   main.querySelectorAll('[data-quiz]').forEach(b=>b.onclick=()=>startQuiz(b.dataset.quiz));
   $('#vosotros').onchange=e=>{ P.settings.vosotros=e.target.checked; save(); };
-  $('#reset').onclick=()=>{ if(confirm('Erase all your progress? This cannot be undone.')){ P={cards:{},verbs:{r:0,w:0},days:[],settings:P.settings}; save(); render(); } };
+  $('#reset').onclick=()=>{ if(confirm('Erase all your progress? This cannot be undone.')){ P={cards:{},verbs:{},days:[],settings:P.settings}; save(); render(); } };
 }
 
 /* ============================ FLASHCARDS ============================ */
@@ -661,37 +673,69 @@ function answer(i){ if(Q.answered!==null) return; const q=Q.qs[Q.i]; Q.answered=
 document.addEventListener('keydown',e=>{ if(view!=='quiz'||!Q||Q.i>=Q.qs.length||Q.answered!==null) return; if(e.target.matches('input,select,textarea')) return; const k=e.key.toUpperCase(); const i='ABCD'.indexOf(k); if(i>=0&&i<Q.qs[Q.i].options.length) answer(i); else if(['1','2','3','4'].includes(e.key)&&(+e.key)<=Q.qs[Q.i].options.length) answer(+e.key-1); });
 
 /* ============================ VERB DRILL ============================ */
-let V={group:'ar',cur:null,state:'ask',right:0,total:0,run:0,last:null};
-function nextVerb(){ const g=VERB_GROUPS.find(x=>x.id===V.group); const vs=VERBS.filter(g.f); const v=pick(vs); const idx=[0,1,2,3,5].concat(P.settings.vosotros?[4]:[]); let pi=pick(idx); if(V.cur&&V.cur.v===v&&V.cur.pi===pi) pi=pick(idx.filter(i=>i!==pi)); V.cur={v,pi}; V.state='ask'; }
+// Two levels the learner picks: 'build' (pick the ending from the verb's own table) and 'type' (write the form).
+const VLEVELS=[{id:'build',es:'Construir',en:'build it'},{id:'type',es:'Escribir',en:'type it'}];
+let V={group:'ar',cur:null,state:'ask',right:0,total:0,run:0,last:null,nudgeHidden:false};
+function vLevel(){ return P.settings.verbLevel||'build'; }
+function vStats(l){ if(!P.verbs[l]) P.verbs[l]={r:0,w:0,recent:[]}; if(!P.verbs[l].recent) P.verbs[l].recent=[]; return P.verbs[l]; }
+function vAcc(l){ const st=P.verbs[l]; const t=st?st.r+st.w:0; return t?pct(st.r/t):null; }
+function pronIdx(){ return [0,1,2,3,5].concat(P.settings.vosotros?[4]:[]); }
+function nextVerb(){
+  const g=VERB_GROUPS.find(x=>x.id===V.group); const vs=VERBS.filter(g.f); const v=pick(vs); const idx=pronIdx();
+  let pi=pick(idx); if(V.cur&&V.cur.v===v&&V.cur.pi===pi) pi=pick(idx.filter(i=>i!==pi));
+  // Build options: only real endings (regular) or real forms (irregular) of THIS verb, shuffled
+  const opts=shuffle(idx.map(i=>({i, label: v.type==='irr'? conj(v)[i] : '-'+ENDINGS[v.type][i]})));
+  V.cur={v,pi,opts}; V.state='ask';
+}
 function verbTable(v,hi){ const f=conj(v); return `<div class="tbl"><table><thead><tr><th>${esc(v.inf)} · ${esc(v.en)}</th><th></th></tr></thead><tbody>${PRON.map((p,i)=>(i===4&&!P.settings.vosotros)?'':`<tr><td>${esc(p)}<br><span class="sub" style="font-size:12px">${esc(PRON_EN[i])}</span></td><td class="${i===hi?'hl':''}"><b class="es" lang="es">${esc(f[i])}</b></td></tr>`).join('')}</tbody></table></div>`; }
+function recordVerb(kind){
+  const st=vStats(vLevel()); const ok=kind!=='wrong';
+  V.total++; if(ok){ V.right++; V.run++; st.r++; } else { V.run=0; st.w++; }
+  st.recent.push(ok?1:0); if(st.recent.length>10) st.recent.shift();
+  save(); markStudied();
+}
+function readyToMoveUp(){ const st=vStats('build'); return vLevel()==='build' && st.recent.length>=10 && st.recent.reduce((a,b)=>a+b,0)>=8; }
 function renderVerbs(){
   if(!V.cur) nextVerb();
-  const {v,pi}=V.cur; const target=conj(v)[pi];
+  const {v,pi,opts}=V.cur; const target=conj(v)[pi]; const level=vLevel(); const stem=v.inf.slice(0,-2);
   const acc=V.total?pct(V.right/V.total)+'%':'—';
   let body='';
   if(V.state==='ask'){
-    body=`<div class="eyebrow">Conjugate in the present tense</div>
+    const head=`<div class="eyebrow">${level==='build'?'Build the present tense form':'Conjugate in the present tense'}</div>
       <div class="row" style="margin:6px 0 4px"><div class="prompt" lang="es">${esc(PRON[pi])} <span style="color:var(--muted);font-weight:500">+</span> ${esc(v.inf)}</div></div>
-      <p class="sub">${esc(v.inf)} = ${esc(v.en)} · ${esc(PRON_EN[pi])}${v.type==='irr'?' · <b>irregular</b>':' · regular -'+v.type}</p>
-      <form id="vForm" style="margin-top:16px;display:flex;flex-direction:column;gap:12px" autocomplete="off">
+      <p class="sub">${esc(v.inf)} = ${esc(v.en)} · ${esc(PRON_EN[pi])}${v.type==='irr'?' · <b>irregular</b>':' · regular -'+v.type}</p>`;
+    if(level==='build'){
+      body=head+(v.type!=='irr'
+        ? `<div class="build" lang="es" aria-label="Stem with a blank ending"><span class="stem">${esc(stem)}</span><span class="slot" id="slot">&nbsp;</span></div>
+           <p class="sub">Drop <b>-${v.type}</b>, keep <b lang="es">${esc(stem)}-</b>, then tap the ending for <b lang="es">${esc(PRON[pi])}</b>.</p>`
+        : `<p class="sub" style="margin-top:12px"><b lang="es">${esc(v.inf)}</b> is irregular, so there is no ending to add. Tap the right form from its table.</p>`)
+        +`<div class="chips-lg" style="margin-top:14px">${opts.map((o,k)=>`<button class="chip-lg" type="button" data-pick="${o.i}" lang="es">${esc(o.label)}<span class="kbd">${k+1}</span></button>`).join('')}</div>`;
+    } else {
+      body=head+`<form id="vForm" style="margin-top:16px;display:flex;flex-direction:column;gap:12px" autocomplete="off">
         <input type="text" id="vIn" lang="es" placeholder="Type the verb form…" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Your answer">
         ${accentKeys()}
         <div class="row"><button class="btn primary" type="submit">Comprobar <small>check<span class="khint"> · enter</span></small></button><button class="btn ghost" type="button" id="vShow">Show me the table</button></div>
       </form>`;
+    }
   } else {
     const r=V.last; const cls=r.kind==='right'?'good':r.kind==='accent'?'warn':'bad';
-    const head=r.kind==='right'?'¡Correcto!':r.kind==='accent'?'Almost! Just the accent.':'Not quite.';
+    const headTxt=r.kind==='right'?'¡Correcto!':r.kind==='accent'?'Almost! Just the accent.':'Not quite.';
     const rule= v.type==='irr'? `<span class="ink">${esc(v.inf)} is irregular. This is one to memorize, so say the whole table out loud once.</span>`
-      : `<span class="ink">Regular -${v.type} verb: drop <b>-${v.type}</b> from <b lang="es">${esc(v.inf)}</b> to get the stem <b lang="es">${esc(v.inf.slice(0,-2))}-</b>, then add the <b>${esc(PRON[pi])}</b> ending <b>-${esc(ENDINGS[v.type][pi])}</b>.</span>`;
-    const expl=`A Spanish 1 student was asked to conjugate "${v.inf}" (${v.en}) for "${PRON[pi]}" and wrote "${r.ans||'(nothing)'}". The correct form is "${target}". In 3 short sentences, explain the rule and give a memory trick.`;
-    body=`<div class="feedback ${cls}"><b>${head}</b><span class="ink" style="font-size:20px"><span lang="es">${esc(PRON[pi])}</span> <b class="es" lang="es">${esc(target)}</b> ${speakBtn(PRON[pi].split(' / ')[0]+' '+target)}</span>${r.kind!=='right'&&r.ans?`<span>You wrote: <s>${esc(r.ans)}</s></span>`:''}${rule}${r.kind==='wrong'?explainBox(expl):''}</div>
+      : `<span class="ink">Regular -${v.type} verb: drop <b>-${v.type}</b> from <b lang="es">${esc(v.inf)}</b> to get the stem <b lang="es">${esc(stem)}-</b>, then add the <b>${esc(PRON[pi])}</b> ending <b>-${esc(ENDINGS[v.type][pi])}</b>.</span>`;
+    const expl=`A Spanish 1 student was asked to conjugate "${v.inf}" (${v.en}) for "${PRON[pi]}" and ${r.ans?`answered "${r.ans}"`:'asked to see the answer'}. The correct form is "${target}". In 3 short sentences, explain the rule and give a memory trick.`;
+    body=`<div class="feedback ${cls}"><b>${headTxt}</b><span class="ink" style="font-size:20px"><span lang="es">${esc(PRON[pi])}</span> <b class="es" lang="es">${esc(target)}</b> ${speakBtn(PRON[pi].split(' / ')[0]+' '+target)}</span>${r.kind!=='right'&&r.ans?`<span>You ${level==='build'?'picked':'wrote'}: <s lang="es">${esc(r.ans)}</s></span>`:''}${rule}${r.kind==='wrong'?explainBox(expl):''}</div>
       ${r.kind!=='right'||r.show?verbTable(v,pi):''}
       <div class="row" style="margin-top:14px"><button class="btn primary" id="vNext">Siguiente <small>next<span class="khint"> · enter</span></small></button></div>`;
   }
+  const nudge = readyToMoveUp()&&!V.nudgeHidden ? `<div class="tip row between" style="margin-top:14px"><span>¡Muy bien! You're at 80%+ on your last 10. Ready to type the forms yourself?</span><span class="row"><button class="btn primary" id="nudgeYes" style="padding:8px 12px">Try typing</button><button class="btn ghost" id="nudgeNo" style="padding:8px 12px;color:var(--sun-ink)">Not yet</button></span></div>` : '';
   main.innerHTML=`<section class="panel lift">
-    <div class="row between"><div class="row"><span class="eyebrow">Verbos · Verb drill</span><select id="vGroup" aria-label="Verb set">${VERB_GROUPS.map(g=>`<option value="${g.id}" ${g.id===V.group?'selected':''}>${esc(g.label)}</option>`).join('')}</select></div>
+    <div class="row between">
+      <div class="row"><span class="eyebrow">Verbos · Verb drill</span>
+        <div class="seg" role="group" aria-label="Level">${VLEVELS.map(l=>`<button type="button" data-level="${l.id}" aria-pressed="${l.id===level}">${l.es} <small>${l.en}</small></button>`).join('')}</div></div>
       <span class="sub" style="font-variant-numeric:tabular-nums">${V.right} / ${V.total} · ${acc}${V.run>=3?' · '+V.run+' in a row':''}</span></div>
+    <div class="row" style="margin-top:10px"><select id="vGroup" aria-label="Verb set">${VERB_GROUPS.map(g=>`<option value="${g.id}" ${g.id===V.group?'selected':''}>${esc(g.label)}</option>`).join('')}</select></div>
     <div style="margin-top:16px">${body}</div>
+    ${nudge}
   </section>
   <section class="panel"><div class="eyebrow">Endings cheat sheet</div>
     <div class="tbl" style="margin-top:8px"><table><thead><tr><th></th><th>-ar</th><th>-er</th><th>-ir</th></tr></thead><tbody>
@@ -700,18 +744,29 @@ function renderVerbs(){
     <p class="tip" style="margin-top:12px">Notice: -er and -ir endings are the same except for <span class="es">nosotros</span> (-emos / -imos)${P.settings.vosotros?' and <span class="es">vosotros</span> (-éis / -ís)':''}.</p>
   </section>`;
   $('#vGroup').onchange=e=>{ V.group=e.target.value; V.cur=null; nextVerb(); renderVerbs(); };
+  main.querySelectorAll('[data-level]').forEach(b=>b.onclick=()=>setVerbLevel(b.dataset.level));
+  if($('#nudgeYes')) $('#nudgeYes').onclick=()=>setVerbLevel('type');
+  if($('#nudgeNo')) $('#nudgeNo').onclick=()=>{ V.nudgeHidden=true; renderVerbs(); };
   if(V.state==='ask'){
-    const inp=$('#vIn'); inp.focus(); lastInput=inp;
-    $('#vForm').onsubmit=e=>{ e.preventDefault(); checkVerb(inp.value); };
-    $('#vShow').onclick=()=>{ V.last={kind:'wrong',ans:'',show:true}; V.state='done'; V.total++; P.verbs.w++; save(); markStudied(); V.run=0; renderVerbs(); };
-  } else { const nb=$('#vNext'); nb.focus(); nb.onclick=()=>{ nextVerb(); renderVerbs(); }; }
+    if(level==='build'){ main.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>pickVerb(+b.dataset.pick)); }
+    else {
+      const inp=$('#vIn'); inp.focus(); lastInput=inp;
+      $('#vForm').onsubmit=e=>{ e.preventDefault(); checkVerb(inp.value); };
+      $('#vShow').onclick=()=>{ V.last={kind:'wrong',ans:'',show:true}; V.state='done'; recordVerb('wrong'); renderVerbs(); };
+    }
+  } else { const nb=$('#vNext'); nb.focus({preventScroll:true}); nb.onclick=()=>{ nextVerb(); renderVerbs(); }; }
 }
-function checkVerb(ans){
+function setVerbLevel(l){ if(l===vLevel()) return; P.settings.verbLevel=l; save(); V.cur=null; V.state='ask'; V.right=0; V.total=0; V.run=0; nextVerb(); renderVerbs(); }
+function pickVerb(i){ // Build level: i is the pronoun index of the chip tapped
+  const {v,pi}=V.cur; const target=conj(v)[pi]; const chosen=conj(v)[i]; const kind= i===pi?'right':'wrong';
+  recordVerb(kind); V.last={kind,ans:chosen}; V.state='done'; say(PRON[pi].split(' / ')[0]+' '+target); renderVerbs();
+}
+function checkVerb(ans){ // Type level
   const {v,pi}=V.cur; const target=conj(v)[pi]; let kind='wrong';
   if(exact(ans)===exact(target)) kind='right'; else if(norm(ans)===norm(target)) kind='accent';
-  V.total++; if(kind==='right'){ V.right++; V.run++; P.verbs.r++; } else if(kind==='accent'){ V.right++; V.run++; P.verbs.r++; } else { V.run=0; P.verbs.w++; }
-  save(); markStudied(); V.last={kind,ans:ans.trim()}; V.state='done'; say(PRON[pi].split(' / ')[0]+' '+target); renderVerbs();
+  recordVerb(kind); V.last={kind,ans:ans.trim()}; V.state='done'; say(PRON[pi].split(' / ')[0]+' '+target); renderVerbs();
 }
+document.addEventListener('keydown',e=>{ if(view!=='verbs'||!V.cur||V.state!=='ask'||vLevel()!=='build') return; if(e.target.matches('input,select,textarea')) return; const k=+e.key; if(k>=1&&k<=V.cur.opts.length) pickVerb(V.cur.opts[k-1].i); });
 
 /* ============================ NOTES ============================ */
 function renderNotes(){
