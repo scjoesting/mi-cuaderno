@@ -205,6 +205,22 @@ details ul{margin:0;padding-left:20px}
 .bk{display:flex;flex-direction:column;gap:10px;background:var(--surface-2);border-radius:12px;padding:14px;color:var(--ink)}
 .bk textarea{width:100%;min-height:96px;border:1px solid var(--line);border-radius:10px;padding:10px;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface);color:var(--ink);resize:vertical;word-break:break-all}
 .sr{position:absolute;left:-9999px}
+.tab b.sm{display:none}
+.talk-log{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.msg .who{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;opacity:.75;margin-bottom:2px}
+.msg .line{font-size:18px;font-weight:700}
+.msg .tr{display:block;font-size:14px;opacity:.8;margin-top:2px}
+.msg .hid{font-style:italic;color:var(--muted)}
+.msg.me .speak{margin-left:6px}
+.msg.now{outline:2px solid var(--accent);outline-offset:2px}
+.talk-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.talk-tools .btn{padding:6px 12px;font-size:14px}
+.optx.talk li{display:flex;flex-direction:column;gap:2px}
+.optx.talk .ch{font-size:17px;min-width:0}
+.optx.talk .en{font-size:14px;color:var(--muted)}
+.mic-box{display:flex;flex-direction:column;gap:6px;margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--surface-2)}
+.mic-out.good{color:var(--good);font-weight:700}
+.mic-out.warn{color:var(--warn);font-weight:700}
 @media (prefers-reduced-motion: reduce){.fc-inner,.bar i,.btn{transition:none}}
 /* ---------- Phone layout (window narrower than 640px) ---------- */
 @media (max-width:640px){
@@ -222,6 +238,8 @@ details ul{margin:0;padding-left:20px}
   .tab svg{display:block}
   .tab b{font-size:11px;font-weight:700}
   .tab span{display:none}
+  .tab b.lg{display:none}
+  .tab b.sm{display:block}
   .tab[aria-current="page"]{background:var(--accent-soft);box-shadow:none}
   main{gap:14px}
   .panel{padding:16px 14px;border-radius:12px}
@@ -269,6 +287,7 @@ details ul{margin:0;padding-left:20px}
     <button class="tab" data-view="cards"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="12" rx="2"/><path d="M7 7V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-2"/></svg><b>Tarjetas</b><span>Flashcards</span></button>
     <button class="tab" data-view="quiz"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg><b>Prueba</b><span>Quiz</span></button>
     <button class="tab" data-view="verbs"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z"/><path d="m13 7 4 4"/></svg><b>Verbos</b><span>Verb drill</span></button>
+    <button class="tab" data-view="talk"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9a2 2 0 0 1-2 2H6l-3 3V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2z"/><path d="M18 9h1a2 2 0 0 1 2 2v9l-3-3h-6a2 2 0 0 1-2-2v-1"/></svg><b class="lg">Conversación</b><b class="sm">Hablar</b><span>Conversation</span></button>
     <button class="tab" data-view="notes"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4z"/><path d="M20 4h-7a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h8z"/></svg><b>Apuntes</b><span>Grammar notes</span></button>
     <button class="tab" data-view="tutor"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg><b>Tutor</b><span>Ask Claude</span></button>
   </nav>
@@ -406,11 +425,258 @@ const VERB_GROUPS = [
 ];
 function conj(v){ if(v.forms) return v.forms; const stem=v.inf.slice(0,-2); return ENDINGS[v.type].map(e=>stem+e); }
 
+// One short conversation per unit. Each turn: the partner's line (p, e = English), then replies [spanish, english, why].
+// The first reply is the right one; the order is shuffled at runtime. q marks a question that also works on its own
+// (Preguntas rápidas); q:[es,en] gives a standalone version of the line.
+const DIALOGUES = [
+{id:'saludos', unit:'saludos', title:"¡Mucho gusto!", en:"Meeting a new classmate", who:"Mateo", role:"a friendly new classmate", set:"First day of class. You play Alex. The student next to you turns to say hi.", turns:[
+ {p:"¡Hola! ¿Cómo te llamas?", e:"Hi! What's your name?", q:1, r:[
+  ["Me llamo Alex. ¿Y tú?","My name is Alex. And you?","Me llamo… answers \"What's your name?\" Adding ¿Y tú? passes the question back, which is polite."],
+  ["Tengo quince años.","I'm fifteen.","That answers ¿Cuántos años tienes? (How old are you?), not your name."],
+  ["Estoy bien, gracias.","I'm fine, thanks.","That answers ¿Cómo estás? (How are you?). He asked your name."]]},
+ {p:"Me llamo Mateo. Mucho gusto.", e:"My name is Mateo. Nice to meet you.", r:[
+  ["Igualmente.","Likewise.","Igualmente (likewise) is the usual reply to mucho gusto. Saying mucho gusto back works too."],
+  ["De nada.","You're welcome.","De nada answers gracias. Nobody thanked you."],
+  ["Hasta luego.","See you later.","That ends the conversation. You just met!"]]},
+ {p:"¿Cómo estás?", e:"How are you?", q:1, r:[
+  ["Muy bien, gracias. ¿Y tú?","Very well, thanks. And you?","¿Cómo estás? asks how you are right now, so answer with bien, mal or más o menos."],
+  ["Soy de Texas.","I'm from Texas.","That answers ¿De dónde eres? (Where are you from?)."],
+  ["Me llamo Alex.","My name is Alex.","He already knows your name. That answers ¿Cómo te llamas?"]]},
+ {p:"Bien. ¿De dónde eres?", e:"Good. Where are you from?", q:["¿De dónde eres?","Where are you from?"], r:[
+  ["Soy de California.","I'm from California.","Where you are from is Origin, so it uses ser: soy de + place."],
+  ["Estoy de California.","(wrong verb) I'm from California.","Origin always uses ser, never estar. Say soy de."],
+  ["Voy a California.","I'm going to California.","Voy a means \"I'm going to\". He asked where you are from."]]},
+ {p:"¡Ay, la clase empieza! Hasta luego.", e:"Oh, class is starting! See you later.", r:[
+  ["¡Hasta luego, Mateo!","See you later, Mateo!","He said goodbye, so you say goodbye back."],
+  ["¡Buenos días!","Good morning!","That is a hello. He is saying goodbye."],
+  ["¿Qué tal?","How's it going?","¿Qué tal? starts a conversation. He is leaving."]]}]},
+
+{id:'numeros', unit:'numeros', title:"¿Cuántos años tienes?", en:"Ages, phone numbers and a little math", who:"Sofía", role:"a classmate in your Spanish class", set:"You're sitting with Sofía at lunch, getting to know each other.", turns:[
+ {p:"¿Cuántos años tienes?", e:"How old are you?", q:1, r:[
+  ["Tengo catorce años.","I'm fourteen.","Spanish uses tener for age: \"I have fourteen years.\""],
+  ["Soy catorce años.","(wrong verb) I'm fourteen.","Age uses tener, not ser. Say tengo catorce años."],
+  ["Tengo catorce hermanos.","I have fourteen brothers and sisters.","Hermanos are siblings. That's a big family, but she asked your age."]]},
+ {p:"Yo también. ¿Cuál es tu número de teléfono?", e:"Me too. What's your phone number?", q:["¿Cuál es tu número de teléfono?","What's your phone number?"], r:[
+  ["Es cinco, cinco, cinco, dos, cero, tres, uno.","It's 555-2031.","Es + the numbers. Saying each digit is easy and always understood."],
+  ["Son las dos y media.","It's two thirty.","That tells the time. She asked for your phone number."],
+  ["Tengo un teléfono.","I have a phone.","True, but it doesn't give her the number."]]},
+ {p:"¿Cuántos estudiantes hay en tu clase de español?", e:"How many students are in your Spanish class?", q:1, r:[
+  ["Hay veinticinco estudiantes.","There are twenty-five students.","Hay means \"there is / there are\". ¿Cuántos? asks for a number."],
+  ["Hay veinticinco años.","There are twenty-five years.","Años are years. She asked about estudiantes."],
+  ["Es la clase de español.","It's Spanish class.","That names the class but doesn't say how many students."]]},
+ {p:"¡Qué grande! En mi clase hay dieciocho. ¿Cuánto es quince más quince?", e:"That's big! My class has eighteen. What's fifteen plus fifteen?", r:[
+  ["Quince más quince son treinta.","Fifteen plus fifteen is thirty.","Treinta is 30. Más means plus."],
+  ["Quince más quince son cincuenta.","Fifteen plus fifteen is fifty.","Cincuenta is 50. Thirty is treinta."],
+  ["Quince más quince son trece.","Fifteen plus fifteen is thirteen.","Trece (13) and treinta (30) sound alike. Treinta is the one you need."]]},
+ {p:"¡Correcto! Eres muy inteligente.", e:"Correct! You're very smart.", r:[
+  ["¡Gracias!","Thanks!","Someone gives you a compliment, you say gracias."],
+  ["De nada.","You're welcome.","De nada answers gracias. She paid you a compliment."],
+  ["Lo siento.","I'm sorry.","There's nothing to apologize for."]]}]},
+
+{id:'fechas', unit:'fechas', title:"¿Cuándo es tu cumpleaños?", en:"Days, dates and birthdays", who:"Diego", role:"a friend from school", set:"Diego is planning birthday parties for the year and asks you some questions.", turns:[
+ {p:"¿Qué día es hoy?", e:"What day is today?", q:1, r:[
+  ["Hoy es viernes.","Today is Friday.","Days of the week use ser: hoy es + day. No capital letter on viernes."],
+  ["Hoy está viernes.","(wrong verb) Today is Friday.","Days and dates are Time, so they use ser, not estar."],
+  ["Hoy hace sol.","It's sunny today.","That answers ¿Qué tiempo hace? (What's the weather?)."]]},
+ {p:"¡Qué bueno! ¿Cuál es la fecha de hoy?", e:"Great! What's today's date?", q:["¿Cuál es la fecha de hoy?","What's today's date?"], r:[
+  ["Es el doce de octubre.","It's October twelfth.","Dates go el + number + de + month: el doce de octubre."],
+  ["Es octubre doce.","It's October twelve.","That's English order. Spanish puts the number first: el doce de octubre."],
+  ["Es lunes.","It's Monday.","That's the day of the week. The fecha is the date."]]},
+ {p:"¿Cuándo es tu cumpleaños?", e:"When is your birthday?", q:1, r:[
+  ["Mi cumpleaños es el tres de marzo.","My birthday is March third.","Same pattern as any date: el + number + de + month."],
+  ["Tengo tres años.","I'm three years old.","That's your age, and a very young one!"],
+  ["Me gusta mi cumpleaños.","I like my birthday.","Nice, but ¿Cuándo? asks when."]]},
+ {p:"¿En qué mes es el Día de Acción de Gracias?", e:"What month is Thanksgiving in?", r:[
+  ["Es en noviembre.","It's in November.","Thanksgiving is in noviembre. En + month means \"in\" that month."],
+  ["Es en julio.","It's in July.","July is the Fourth of July. Thanksgiving is in November."],
+  ["Es el jueves.","It's on Thursday.","Thanksgiving is on a Thursday, but he asked which mes (month)."]]},
+ {p:"¿Qué día no tienes clases?", e:"What day don't you have classes?", q:1, r:[
+  ["No tengo clases los sábados.","I don't have classes on Saturdays.","Los sábados means \"on Saturdays\" (every Saturday). Days take el or los, never en."],
+  ["No tengo clases en sábado.","I don't have classes in Saturday.","Spanish doesn't use en with days. Say el sábado or los sábados."],
+  ["No tengo la clase de arte.","I don't have art class.","That says which class, not which day."]]}], end:["¡Yo tampoco! Hasta el lunes.","Me neither! See you Monday."]},
+
+{id:'clase', unit:'clase', title:"¿Tienes un lápiz?", en:"Borrowing supplies in class", who:"Camila", role:"a classmate who sits next to you", set:"Class is about to start and Camila forgot some things.", turns:[
+ {p:"Oye, ¿tienes un lápiz?", e:"Hey, do you have a pencil?", r:[
+  ["Sí, tengo un lápiz. Aquí está.","Yes, I have a pencil. Here it is.","She asked if you have one, so answer with tengo."],
+  ["Sí, tengo una lápiz.","Yes, I have a pencil.","Lápiz is masculine (el lápiz), so it's un lápiz."],
+  ["Sí, es un lápiz.","Yes, it's a pencil.","That says what something is. She asked if you have one."]]},
+ {p:"Gracias. ¿Qué clase tienes ahora?", e:"Thanks. What class do you have now?", q:["¿Qué clase tienes ahora?","What class do you have now?"], r:[
+  ["Tengo la clase de ciencias.","I have science class.","Tengo la clase de + subject."],
+  ["Tengo un cuaderno.","I have a notebook.","A cuaderno is a notebook, not a class."],
+  ["Son las diez.","It's ten o'clock.","That's the time. She asked which class."]]},
+ {p:"¿Dónde está tu mochila?", e:"Where is your backpack?", q:1, r:[
+  ["Está cerca de la puerta.","It's near the door.","Where something is uses estar: está + place."],
+  ["Es cerca de la puerta.","(wrong verb) It's near the door.","Location always uses estar, not ser. Remember PLACE."],
+  ["Mi mochila es azul.","My backpack is blue.","That's its color. ¿Dónde? asks where."]]},
+ {p:"¿Cómo es tu profesor de matemáticas?", e:"What is your math teacher like?", q:1, r:[
+  ["Es simpático y un poco serio.","He's nice and a little serious.","¿Cómo es? asks what someone is like. Profesor is a man, so the adjectives end in -o."],
+  ["Es simpática y un poco seria.","She's nice and a little serious.","Profesor is masculine, so the adjectives need -o: simpático, serio."],
+  ["Está en la cafetería.","He's in the cafeteria.","That says where he is. ¿Cómo es? asks what he's like."]]},
+ {p:"¡Uy, la profesora! Necesitamos estudiar.", e:"Uh-oh, the teacher! We need to study.", r:[
+  ["Tienes razón. Abro mi libro.","You're right. I'm opening my book.","Opening your book is what you do to start studying."],
+  ["Tienes razón. Cierro mi libro.","You're right. I'm closing my book.","Cerrar is to close. That's the opposite of studying!"],
+  ["No, gracias.","No, thanks.","No, gracias turns down an offer. She didn't offer you anything."]]}]},
+
+{id:'descripciones', unit:'descripciones', title:"¿Cómo eres?", en:"Describing yourself and others", who:"Valentina", role:"a new friend", set:"Valentina is getting to know you and your family.", turns:[
+ {p:"¿Cómo eres?", e:"What are you like?", q:1, r:[
+  ["Soy inteligente y muy paciente.","I'm smart and very patient.","¿Cómo eres? asks about personality, which uses ser: soy + adjectives."],
+  ["Estoy inteligente.","(wrong verb) I'm smart.","Personality is a Characteristic, so it uses ser: soy inteligente."],
+  ["Estoy bien, gracias.","I'm fine, thanks.","That answers ¿Cómo estás? (How are you?). ¿Cómo eres? means \"What are you like?\""]]},
+ {p:"¿Cómo es tu mejor amigo?", e:"What is your best friend like?", q:1, r:[
+  ["Es alto, moreno y muy gracioso.","He's tall, dark-haired and very funny.","Amigo is masculine, so every adjective ends in -o."],
+  ["Es alta, morena y muy graciosa.","She's tall, dark-haired and very funny.","Amigo (with -o) is a boy, so the adjectives need -o."],
+  ["Está alto y moreno.","(wrong verb) He's tall and dark-haired.","Looks are Description, so they use ser: es alto."]]},
+ {p:"¿Y tus hermanas? ¿Cómo son?", e:"And your sisters? What are they like?", r:[
+  ["Son rubias y simpáticas.","They're blond and nice.","They are = son. Hermanas are girls and plural, so -as."],
+  ["Es rubia y simpática.","She's blond and nice.","Es is for one person. For two sisters, use son and add -s."],
+  ["Son rubios y simpáticos.","They're blond and nice.","Your sisters are all girls, so the adjectives end in -as, not -os."]]},
+ {p:"¿Cómo estás hoy?", e:"How are you today?", q:1, r:[
+  ["Estoy feliz porque es viernes.","I'm happy because it's Friday.","How you feel today is an Emotion, so it uses estar."],
+  ["Soy alto y moreno.","I'm tall and dark-haired.","That's what you look like (¿Cómo eres?). Hoy asks how you feel today."],
+  ["Estás feliz.","You're happy.","Estás is the tú form. Talking about yourself, use estoy."]]},
+ {p:"Yo también. ¡Hasta mañana!", e:"Me too. See you tomorrow!", r:[
+  ["¡Hasta mañana!","See you tomorrow!","She said goodbye, so say it back."],
+  ["¡Mucho gusto!","Nice to meet you!","You say mucho gusto when you first meet. Now she is leaving."],
+  ["¿Cómo te llamas?","What's your name?","Odd to ask her name as she leaves. You already know it."]]}]},
+
+{id:'familia', unit:'familia', title:"Mi familia", en:"Talking about your family and pets", who:"Andrés", role:"a classmate working on a family project with you", set:"You and Andrés are interviewing each other for a family-tree project.", turns:[
+ {p:"¿Cuántas personas hay en tu familia?", e:"How many people are in your family?", q:1, r:[
+  ["Hay cinco personas en mi familia.","There are five people in my family.","Hay + number answers ¿Cuántas?"],
+  ["Hay cinco personas en mi clase.","There are five people in my class.","He asked about your familia, not your clase."],
+  ["Tengo cinco años.","I'm five years old.","That's an age, and a very young one."]]},
+ {p:"¿Tienes hermanos?", e:"Do you have brothers or sisters?", q:1, r:[
+  ["Sí, tengo un hermano y una hermana.","Yes, I have a brother and a sister.","Use tener for family you have. Hermano takes un, hermana takes una."],
+  ["Sí, tengo una hermano.","Yes, I have a brother.","Hermano ends in -o and is masculine, so it's un hermano."],
+  ["Sí, soy un hermano.","Yes, I am a brother.","That says what you are. To say you have siblings, use tengo."]]},
+ {p:"¿Cómo se llama tu madre?", e:"What is your mother's name?", q:1, r:[
+  ["Se llama Laura.","Her name is Laura.","For someone else's name, use se llama."],
+  ["Me llamo Laura.","My name is Laura.","Me llamo is YOUR name. For your mom, say se llama."],
+  ["Tiene cuarenta años.","She's forty.","That's her age, not her name."]]},
+ {p:"¿Tienes mascotas?", e:"Do you have pets?", q:1, r:[
+  ["Sí, tengo un gato. Se llama Max.","Yes, I have a cat. His name is Max.","A gato is a pet, and it is masculine: un gato."],
+  ["Sí, tengo un primo.","Yes, I have a cousin.","A primo is a cousin, not a pet!"],
+  ["Sí, tengo una gato.","Yes, I have a cat.","Gato ends in -o and is masculine, so it's un gato."]]},
+ {p:"¡Qué lindo! Yo tengo dos perros. ¿Te gustan los perros?", e:"How cute! I have two dogs. Do you like dogs?", r:[
+  ["Sí, me gustan mucho.","Yes, I like them a lot.","Los perros is plural, so it's gustan."],
+  ["Sí, me gusta mucho.","Yes, I like it a lot.","Los perros is more than one thing, so use gustan."],
+  ["Sí, tengo dos perros.","Yes, I have two dogs.","That repeats what he said. He asked if you like dogs."]]}]},
+
+{id:'actividades', unit:'actividades', title:"¿Qué te gusta hacer?", en:"Free time and making plans", who:"Isabel", role:"a friend from school", set:"You and Isabel are talking about what you do after school.", turns:[
+ {p:"¿Qué te gusta hacer?", e:"What do you like to do?", q:1, r:[
+  ["Me gusta bailar y escuchar música.","I like to dance and listen to music.","Activities always take gusta, even when you name two."],
+  ["Me gustan bailar y escuchar música.","I like to dance and listen to music.","Activities (verbs) always use gusta, never gustan."],
+  ["Yo gusto bailar.","(not Spanish) I like to dance.","Spanish doesn't say yo gusto. Say me gusta."]]},
+ {p:"¿Practicas deportes?", e:"Do you play sports?", q:1, r:[
+  ["Sí, nado y corro mucho.","Yes, I swim and run a lot.","Talking about yourself, regular verbs end in -o: nado, corro."],
+  ["Sí, nadas y corres mucho.","Yes, you swim and run a lot.","Nadas and corres are tú forms (you). For I, use nado and corro."],
+  ["Sí, veo la tele.","Yes, I watch TV.","Watching TV isn't a sport."]]},
+ {p:"¿Qué no te gusta hacer?", e:"What don't you like to do?", q:1, r:[
+  ["No me gusta trabajar los sábados.","I don't like working on Saturdays.","Put no in front of me gusta."],
+  ["Me gusta trabajar los sábados.","I like working on Saturdays.","She asked what you DON'T like. You need no in front."],
+  ["No te gusta trabajar.","You don't like to work.","Te gusta is about you (the person you talk to). For yourself, use me."]]},
+ {p:"¿Quieres ver una película el sábado?", e:"Do you want to watch a movie on Saturday?", r:[
+  ["¡Sí, quiero! ¿A qué hora?","Yes, I want to! What time?","Quiero is the yo form of querer. Asking ¿A qué hora? keeps the plan going."],
+  ["Sí, quieres.","Yes, you want to.","Quieres is the tú form. Say quiero for I want."],
+  ["Sí, es sábado.","Yes, it's Saturday.","That doesn't answer whether you want to go."]]},
+ {p:"A las siete. ¡Hasta el sábado!", e:"At seven. See you Saturday!", r:[
+  ["¡Perfecto! ¡Hasta el sábado!","Perfect! See you Saturday!","Agree to the plan and say goodbye."],
+  ["De nada.","You're welcome.","De nada answers gracias. She didn't thank you."],
+  ["Son las siete.","It's seven o'clock.","That says it is seven right now. The movie is A las siete (at seven)."]]}]},
+
+{id:'comida', unit:'comida', title:"En el restaurante", en:"Ordering food at a restaurant", who:"El mesero", role:"a polite waiter at a Mexican restaurant who speaks to the student as usted", set:"You're at a restaurant. The waiter comes to your table.", turns:[
+ {p:"Buenas tardes. ¿Qué desea comer?", e:"Good afternoon. What would you like to eat?", r:[
+  ["Quiero una hamburguesa, por favor.","I want a hamburger, please.","Quiero + food + por favor is a polite order."],
+  ["Quiero un hamburguesa, por favor.","I want a hamburger, please.","Hamburguesa ends in -a and is feminine, so it's una."],
+  ["Me gusta comer.","I like to eat.","True, but it doesn't tell him what to bring."]]},
+ {p:"Muy bien. ¿Y para beber?", e:"Very good. And to drink?", q:["¿Qué quieres beber?","What do you want to drink?"], r:[
+  ["Un jugo de naranja, por favor.","An orange juice, please.","Beber is to drink, so order a drink."],
+  ["Una ensalada, por favor.","A salad, please.","A salad is food. He asked about a drink."],
+  ["Tengo hambre.","I'm hungry.","Hambre is hunger. For a drink, you'd say tengo sed, and then order."]]},
+ {p:"¿Quiere usted algo más?", e:"Would you like anything else?", r:[
+  ["No, gracias. Es todo.","No, thanks. That's all.","No, gracias politely says you don't want more."],
+  ["No, de nada.","No, you're welcome.","De nada answers gracias. Use no, gracias."],
+  ["Sí, gracias. Es todo.","Yes, thanks. That's all.","Sí says you want more, then es todo says you don't. Pick one!"]]},
+ {p:"¿Cómo está la comida?", e:"How is the food?", q:["¿Cómo está la pizza?","How is the pizza?"], r:[
+  ["¡Está deliciosa!","It's delicious!","How food tastes right now uses estar. Comida is feminine, so deliciosa."],
+  ["¡Está delicioso!","It's delicious!","Comida ends in -a and is feminine, so the adjective is deliciosa."],
+  ["¡Qué asco!","How gross!","That means you hate it. Not very nice to say to the waiter!"]]},
+ {p:"Me alegro. Son ocho dólares.", e:"I'm glad. That's eight dollars.", r:[
+  ["Aquí tiene. Muchas gracias.","Here you go. Thank you very much.","Aquí tiene (here you go) is what you say as you hand someone money."],
+  ["Son las ocho.","It's eight o'clock.","Son las ocho tells the time. He told you the price."],
+  ["Tengo ocho años.","I'm eight years old.","That's an age, not a payment!"]]}], end:["Gracias a usted. ¡Que tenga un buen día!","Thank you. Have a nice day!"]},
+
+{id:'preguntas', unit:'preguntas', title:"¿A qué hora?", en:"Time, schedules and question words", who:"Lucas", role:"a new student who doesn't know the school yet", set:"Lucas is new and asks you about the school day.", turns:[
+ {p:"Perdón, ¿qué hora es?", e:"Excuse me, what time is it?", q:["¿Qué hora es?","What time is it?"], r:[
+  ["Son las tres y media.","It's three thirty.","After one o'clock, use son las + hour."],
+  ["Es las tres y media.","It's three thirty.","Only one o'clock uses es la. Three uses son las."],
+  ["A las tres y media.","At three thirty.","A las means \"at\" a time, for when something happens. He asked what time it is now."]]},
+ {p:"Gracias. ¿A qué hora es la clase de español?", e:"Thanks. What time is Spanish class?", q:["¿A qué hora es tu clase de español?","What time is your Spanish class?"], r:[
+  ["Es a las nueve de la mañana.","It's at nine in the morning.","¿A qué hora? asks when, so answer with a las."],
+  ["Son las nueve de la mañana.","It's nine in the morning (now).","That says what time it is right now. Use a las for when the class is."],
+  ["Es en la biblioteca.","It's in the library.","That says where. He asked when."]]},
+ {p:"¿Quién es el profesor?", e:"Who is the teacher?", q:["¿Quién es tu profesor de español?","Who is your Spanish teacher?"], r:[
+  ["Es el señor García.","It's Mr. García.","¿Quién? asks who, so answer with a name."],
+  ["Es muy simpático.","He's very nice.","That says what he's like (¿Cómo es?). ¿Quién? asks who."],
+  ["Es a las nueve.","It's at nine.","That says when. ¿Quién? asks who."]]},
+ {p:"¿Te gusta la clase? ¿Por qué?", e:"Do you like the class? Why?", q:["¿Por qué te gusta tu clase favorita?","Why do you like your favorite class?"], r:[
+  ["Sí, porque es divertida.","Yes, because it's fun.","Porque (one word, no accent) means because. Clase is feminine, so divertida."],
+  ["Sí, ¿por qué es divertida?","Yes, why is it fun?","¿Por qué? asks why. To answer, use porque."],
+  ["Sí, porque es divertido.","Yes, because it's fun.","Clase is feminine, so the adjective needs -a: divertida."]]},
+ {p:"¿Cuántas clases tienes hoy?", e:"How many classes do you have today?", q:1, r:[
+  ["Tengo seis clases.","I have six classes.","¿Cuántas? asks how many, so answer with a number."],
+  ["Son las seis.","It's six o'clock.","That's the time. He asked how many classes."],
+  ["Tengo la clase de arte.","I have art class.","That names one class. He asked how many."]]}]},
+
+{id:'colores', unit:'colores', title:"¿Qué tiempo hace?", en:"Weather, seasons and colors", who:"Paula", role:"a friend visiting from another city", set:"Paula is visiting your town and wants to know what it's like here.", turns:[
+ {p:"¿Qué tiempo hace hoy?", e:"What's the weather like today?", q:1, r:[
+  ["Hace calor y hace sol.","It's hot and sunny.","Most weather uses hace: hace calor, hace frío, hace sol."],
+  ["Es calor y sol.","(wrong verb) It's hot and sunny.","Weather uses hace, not ser."],
+  ["Tengo calor.","I'm hot.","Tengo calor is how YOU feel. Weather uses hace calor."]]},
+ {p:"¿Cuál es tu estación favorita?", e:"What's your favorite season?", q:1, r:[
+  ["Mi estación favorita es el invierno porque nieva.","My favorite season is winter because it snows.","Estaciones are seasons: la primavera, el verano, el otoño, el invierno."],
+  ["Mi estación favorita es diciembre.","My favorite season is December.","Diciembre is a month. She asked for a season."],
+  ["Mi estación favorita es el invierno porque hace calor.","My favorite season is winter because it's hot.","Winter isn't hot in most places! Try nieva or hace frío."]]},
+ {p:"¿Cuál es tu color favorito?", e:"What's your favorite color?", q:1, r:[
+  ["Mi color favorito es el azul.","My favorite color is blue.","When a color is used as a noun, it takes el: el azul, el rojo."],
+  ["Mi color favorito es la azul.","My favorite color is blue.","Color names as nouns are masculine: el azul."],
+  ["Mi color favorito es el verano.","My favorite color is summer.","Verano is a season, not a color."]]},
+ {p:"¿De qué color es tu mochila?", e:"What color is your backpack?", q:1, r:[
+  ["Es roja y negra.","It's red and black.","Mochila is feminine, so the colors end in -a."],
+  ["Es rojo y negro.","It's red and black.","Mochila is feminine, so it's roja y negra."],
+  ["Es grande.","It's big.","That's the size. She asked the color."]]},
+ {p:"¿Llueve mucho aquí en abril?", e:"Does it rain a lot here in April?", r:[
+  ["Sí, llueve mucho en la primavera.","Yes, it rains a lot in the spring.","Llueve means it rains. Weather verbs have one form: llueve, nieva."],
+  ["Sí, llueves mucho.","Yes, you rain a lot.","Llueves means \"you rain\". Weather only uses llueve."],
+  ["Sí, hace sol todo el día.","Yes, it's sunny all day.","Sunny all day means no rain. That contradicts your sí."]]}]},
+
+{id:'lugares', unit:'lugares', title:"¿Adónde vas?", en:"Places and making plans with ir", who:"Tomás", role:"a friend from school", set:"School just ended. You run into Tomás in the hallway.", turns:[
+ {p:"¿Adónde vas después de las clases?", e:"Where are you going after classes?", q:["¿Adónde vas?","Where are you going?"], r:[
+  ["Voy a la biblioteca.","I'm going to the library.","¿Adónde? asks where to, so answer with voy a + place."],
+  ["Voy a el parque.","I'm going to the park.","A + el always becomes al: voy al parque."],
+  ["Estoy en la biblioteca.","I'm at the library.","That says where you are now. He asked where you are going."]]},
+ {p:"¿Qué vas a hacer allí?", e:"What are you going to do there?", r:[
+  ["Voy a estudiar para el examen.","I'm going to study for the test.","Voy a + infinitive means \"I'm going to do\" something."],
+  ["Voy estudiar.","I'm going study.","You need the a: voy a estudiar."],
+  ["Voy a la escuela.","I'm going to school.","That's a place. He asked what you'll do."]]},
+ {p:"¿Dónde está la biblioteca?", e:"Where is the library?", q:1, r:[
+  ["Está cerca del parque.","It's near the park.","Location uses estar. De + el becomes del."],
+  ["Es cerca del parque.","(wrong verb) It's near the park.","Where something is uses estar, not ser."],
+  ["Voy cerca del parque.","I'm going near the park.","That says where you're going. He asked where the library is."]]},
+ {p:"¿Quieres ir al centro comercial el domingo?", e:"Do you want to go to the mall on Sunday?", q:["¿Quieres ir al cine el sábado?","Do you want to go to the movies on Saturday?"], r:[
+  ["Sí, ¿vamos a las dos?","Yes, shall we go at two?","Vamos means \"we go\" or \"let's go\", great for making plans."],
+  ["Sí, vas a las dos.","Yes, you go at two.","Vas is the tú form. To go together, use vamos."],
+  ["No, quiero ir.","No, I want to go.","No and quiero ir say opposite things."]]},
+ {p:"¡Perfecto! Nos vemos el domingo.", e:"Perfect! See you Sunday.", r:[
+  ["¡Hasta el domingo!","See you Sunday!","He said domingo, so you say goodbye until Sunday."],
+  ["¡Hasta el lunes!","See you Monday!","You made plans for Sunday (domingo), not Monday."],
+  ["¡Buenos días!","Good morning!","That's a hello. He's saying goodbye."]]}]}
+];
+
 /* ============================ PROGRESS ============================ */
 const KEY='micuaderno.v1';
 const INTERVALS=[0,1,3,7,14,30]; // days until a card comes back, by box
-let P = {cards:{}, verbs:{}, days:[], settings:{vosotros:false, dir:'es'}};
-try{ const raw=localStorage.getItem(KEY); if(raw){ const o=JSON.parse(raw); P=Object.assign(P,o); P.settings=Object.assign({vosotros:false,dir:'es'},o.settings||{}); if(P.verbs&&typeof P.verbs.r==='number'){ P.verbs={type:{r:P.verbs.r,w:P.verbs.w,recent:[]}}; } if(!P.verbs) P.verbs={}; } }catch(e){}
+let P = {cards:{}, verbs:{}, conv:{}, days:[], settings:{vosotros:false, dir:'es'}};
+try{ const raw=localStorage.getItem(KEY); if(raw){ const o=JSON.parse(raw); P=Object.assign(P,o); P.settings=Object.assign({vosotros:false,dir:'es'},o.settings||{}); if(P.verbs&&typeof P.verbs.r==='number'){ P.verbs={type:{r:P.verbs.r,w:P.verbs.w,recent:[]}}; } if(!P.verbs) P.verbs={}; if(!P.conv) P.conv={}; } }catch(e){}
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(P)); }catch(e){} }
 function today(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function dateStr(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -461,7 +727,9 @@ function genderTag(g){ return g==='m'?'<span class="tag m">el · masculine</span
 const canSpeak='speechSynthesis' in window; let esVoice=null;
 function pickVoice(){ try{ const vs=speechSynthesis.getVoices(); esVoice=vs.find(v=>/^es[-_](MX|US|419)/i.test(v.lang))||vs.find(v=>/^es/i.test(v.lang))||null; }catch(e){} }
 if(canSpeak){ pickVoice(); try{ speechSynthesis.onvoiceschanged=pickVoice; }catch(e){} }
-function say(t){ if(!canSpeak) return; try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t.replace(/\s*\(.*?\)\s*/g,' ').replace(/…/g,'')); u.lang=esVoice?esVoice.lang:'es-ES'; if(esVoice) u.voice=esVoice; u.rate=0.85; speechSynthesis.speak(u); }catch(e){} }
+function utter(t,rate){ const u=new SpeechSynthesisUtterance(t.replace(/\s*\(.*?\)\s*/g,' ').replace(/…/g,'')); u.lang=esVoice?esVoice.lang:'es-ES'; if(esVoice) u.voice=esVoice; u.rate=rate||0.85; return u; }
+function say(t,rate){ if(!canSpeak) return; try{ speechSynthesis.cancel(); speechSynthesis.speak(utter(t,rate)); }catch(e){} }
+function sayAll(lines){ if(!canSpeak) return; try{ speechSynthesis.cancel(); lines.forEach(t=>speechSynthesis.speak(utter(t))); }catch(e){} }
 function speakBtn(t,sm){ return canSpeak? '<button class="speak'+(sm?' sm':'')+'" type="button" data-say="'+esc(t)+'" aria-label="Hear it in Spanish" title="Hear it">'+SPEAKER+'</button>' : ''; }
 // Put a small speaker after every Spanish word or phrase marked .es inside a container.
 function addSpeakers(root){
@@ -488,7 +756,7 @@ document.addEventListener('click',e=>{ const k=e.target.closest('[data-key]'); i
 
 // Optional tutor (only when opened inside the Claude viewer)
 let sampleFn=null;
-(async()=>{ try{ if(window.claude&&typeof window.claude.use==='function'){ sampleFn=await window.claude.use('sample'); if(view==='tutor') render(); document.querySelectorAll('.explain[hidden]').forEach(el=>{ el.hidden=!sampleFn; }); } }catch(e){} })();
+(async()=>{ try{ if(window.claude&&typeof window.claude.use==='function'){ sampleFn=await window.claude.use('sample'); if(view==='tutor'||(view==='talk'&&!C)) render(); document.querySelectorAll('.explain[hidden]').forEach(el=>{ el.hidden=!sampleFn; }); } }catch(e){} })();
 const TUTOR_RULES='You are a patient, encouraging Spanish tutor for a 9th grader in Spanish 1 who is catching up and wants to feel confident. Keep answers short (under 120 words unless they ask for a list or table), use simple English, write Spanish with correct accents, and give one quick example sentence with its English meaning. Stay at Spanish 1 level: present tense, ser/estar/tener/ir/gustar, basic vocabulary. If they ask for a quiz, ask ONE question at a time and wait for their answer. Plain text only, no markdown symbols.';
 function explainBox(prompt){
   const id='ex'+Math.random().toString(36).slice(2,8);
@@ -505,7 +773,7 @@ function tutorErr(e){ const c=e&&e.code; if(c==='not_granted'||c==='sampling_dis
 /* ============================ ROUTER ============================ */
 let view='home';
 try{ view=localStorage.getItem(KEY+'.view')||'home'; }catch(e){}
-if(!['home','cards','quiz','verbs','notes','tutor'].includes(view)) view='home';
+if(!['home','cards','quiz','verbs','talk','notes','tutor'].includes(view)) view='home';
 const main=$('#main');
 function go(v){ view=v; try{ localStorage.setItem(KEY+'.view',v); }catch(e){} render(); window.scrollTo({top:0}); }
 $('#tabs').addEventListener('click',e=>{ const t=e.target.closest('.tab'); if(t) go(t.dataset.view); });
@@ -513,7 +781,7 @@ function renderStreak(){ $('#streakNum').textContent=streak(); }
 function render(){
   document.querySelectorAll('.tab').forEach(t=>{ if(t.dataset.view===view) t.setAttribute('aria-current','page'); else t.removeAttribute('aria-current'); });
   renderStreak();
-  ({home:renderHome,cards:renderCards,quiz:renderQuiz,verbs:renderVerbs,notes:renderNotes,tutor:renderTutor})[view]();
+  ({home:renderHome,cards:renderCards,quiz:renderQuiz,verbs:renderVerbs,talk:renderTalk,notes:renderNotes,tutor:renderTutor})[view]();
 }
 
 /* ============================ SAVE / IMPORT PROGRESS ============================ */
@@ -537,8 +805,10 @@ function mergeProgress(o){ // higher box, more reviews and the later due date wi
   for(const id in (o.cards||{})){ const a=cards[id], b=o.cards[id]; if(!b||typeof b!=='object') continue; merged++; cards[id]= a? {b:Math.max(a.b||0,b.b||0), d:Math.max(a.d||0,b.d||0), s:Math.max(a.s||0,b.s||0), r:Math.max(a.r||0,b.r||0)} : b; }
   const verbs=Object.assign({},P.verbs); const ov=(o.verbs&&typeof o.verbs.r==='number')?{type:{r:o.verbs.r,w:o.verbs.w,recent:[]}}:(o.verbs||{});
   for(const l in ov){ const a=verbs[l], b=ov[l]; verbs[l]= a? {r:Math.max(a.r||0,b.r||0), w:Math.max(a.w||0,b.w||0), recent:((b.recent||[]).length>=(a.recent||[]).length)?(b.recent||[]):(a.recent||[])} : b; }
+  const conv=Object.assign({},P.conv);
+  for(const id in (o.conv||{})){ const a=conv[id], b=o.conv[id]; if(!b||typeof b!=='object') continue; conv[id]= a? {best:Math.max(a.best||0,b.best||0), n:Math.max(a.n||0,b.n||0)} : b; }
   const days=[...new Set([...(P.days||[]),...(o.days||[])])].sort();
-  P={cards,verbs,days,settings:Object.assign({},o.settings||{},P.settings),meta:Object.assign({},o.meta||{},P.meta||{})};
+  P={cards,verbs,conv,days,settings:Object.assign({},o.settings||{},P.settings),meta:Object.assign({},o.meta||{},P.meta||{})};
   save(); return merged;
 }
 function saveAge(){ const t=P.meta&&P.meta.lastSave; return t? Math.floor((Date.now()-t)/864e5) : null; }
@@ -629,7 +899,7 @@ function renderHome(){
   main.querySelectorAll('[data-study]').forEach(b=>b.onclick=()=>{ const u=UNITS.find(x=>x.id===b.dataset.study); startCards(shuffle(u.cards.map((c,i)=>cardId(u,i))),u.name); });
   main.querySelectorAll('[data-quiz]').forEach(b=>b.onclick=()=>startQuiz(b.dataset.quiz));
   $('#vosotros').onchange=e=>{ P.settings.vosotros=e.target.checked; save(); };
-  $('#reset').onclick=()=>{ if(confirm('Erase all your progress? This cannot be undone.')){ P={cards:{},verbs:{},days:[],settings:P.settings,meta:{}}; save(); render(); } };
+  $('#reset').onclick=()=>{ if(confirm('Erase all your progress? This cannot be undone.')){ P={cards:{},verbs:{},conv:{},days:[],settings:P.settings,meta:{}}; save(); render(); } };
 }
 
 /* ============================ FLASHCARDS ============================ */
@@ -776,7 +1046,7 @@ const DRILLS={
 function startDrill(key){ const d=DRILLS[key]; Q={qs:d.build(),i:0,score:0,answered:null,title:d.title,drill:key}; go('quiz'); }
 function goVerbs(group){ V.group=group; V.cur=null; V.state='ask'; go('verbs'); }
 function practice(list){ return `<div class="practice"><span class="eyebrow">Practice this</span><div class="row">${list.map(a=>`<button class="btn" type="button" data-act="${a.act}" data-arg="${a.arg}">${a.label}${a.sub?` <small>${a.sub}</small>`:''}</button>`).join('')}</div></div>`; }
-function wirePractice(){ main.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{ const a=b.dataset.arg; switch(b.dataset.act){ case 'drill': startDrill(a); break; case 'verbs': goVerbs(a); break; case 'quiz': startQuiz(a); break; case 'cards': { const u=UNITS.find(x=>x.id===a); startCards(shuffle(u.cards.map((c,i)=>cardId(u,i))),u.name); } } }); }
+function wirePractice(){ main.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{ const a=b.dataset.arg; switch(b.dataset.act){ case 'drill': startDrill(a); break; case 'verbs': goVerbs(a); break; case 'quiz': startQuiz(a); break; case 'talk': startConv(a); break; case 'cards': { const u=UNITS.find(x=>x.id===a); startCards(shuffle(u.cards.map((c,i)=>cardId(u,i))),u.name); } } }); }
 
 /* ============================ QUIZ ============================ */
 let Q=null;
@@ -958,6 +1228,115 @@ function checkVerb(ans){ // Type level
 }
 document.addEventListener('keydown',e=>{ if(view!=='verbs'||!V.cur||V.state!=='ask'||vLevel()!=='build') return; if(e.target.matches('input,select,textarea')) return; const k=+e.key; if(k>=1&&k<=V.cur.opts.length) pickVerb(V.cur.opts[k-1].i); });
 
+/* ============================ CONVERSATION ============================ */
+// Scripted conversations: the partner speaks a line, the learner picks the reply that fits.
+// Two modes: 'read' shows the partner's words, 'listen' hides them until the learner answers.
+let C=null;
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition||null;
+const MIC='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>';
+function convMode(){ return P.settings.convMode||'read'; }
+function prepTurn(t,quick,who){ const alt=quick&&Array.isArray(t.q); return {p:alt?t.q[0]:t.p, e:alt?t.q[1]:t.e, who, ans:t.r[0][0], ansEn:t.r[0][1], opts:shuffle(t.r.map((o,k)=>({es:o[0],en:o[1],why:o[2],c:k===0})))}; }
+function newConv(id,title,d,turns){ C={id,title,d,turns,i:0,picked:null,score:0,said:-1,show:false,en:false,saved:false}; go('talk'); }
+function startConv(id){ const d=DIALOGUES.find(x=>x.id===id); newConv(id,d.title,d,d.turns.map(t=>prepTurn(t,false,d.who))); }
+function startQuick(){ const pool=[]; DIALOGUES.forEach(d=>d.turns.forEach(t=>{ if(t.q) pool.push(prepTurn(t,true,d.who)); })); newConv('quick','Preguntas rápidas',null,shuffle(pool).slice(0,10)); }
+function themBubble(t,{hide,en,now}={}){ return `<div class="msg ai${now?' now':''}"><span class="who">${esc(t.who)}</span>${hide?'<span class="hid">Listen, then pick your reply.</span>':`<span class="line" lang="es">${esc(t.p)}</span>`}${speakBtn(t.p,true)}${en?`<span class="tr">${esc(t.e)}</span>`:''}</div>`; }
+function meBubble(t){ return `<div class="msg me"><span class="who">Tú</span><span class="line" lang="es">${esc(t.ans)}</span>${speakBtn(t.ans,true)}</div>`; }
+function renderTalk(){
+  if(!C) return renderTalkPicker();
+  if(C.i>=C.turns.length) return renderTalkDone();
+  const t=C.turns[C.i]; const answered=C.picked!==null; const listen=convMode()==='listen'; const letters='ABC';
+  const log=C.turns.slice(0,C.i).map(x=>themBubble(x,{en:true})+meBubble(x)).join('');
+  const cur=themBubble(t,{hide:listen&&!C.show&&!answered,en:C.en||answered,now:!answered});
+  const tools=answered?'':`<div class="talk-tools">${canSpeak?`<button class="btn" type="button" data-say="${esc(t.p)}">${SPEAKER} Otra vez <small>again</small></button><button class="btn" type="button" id="cSlow">Más despacio <small>slower</small></button>`:''}${listen&&!C.show?'<button class="btn ghost" type="button" id="cShow">Show the words</button>':''}${C.en?'':'<button class="btn ghost" type="button" id="cEn">What does it mean?</button>'}</div>`;
+  let below='';
+  if(!answered){
+    below=`<div class="eyebrow" style="margin-top:18px">Your reply</div>
+      <div class="opts" style="margin-top:8px;grid-template-columns:1fr">${t.opts.map((o,i)=>`<button class="opt" data-i="${i}"><span class="k">${letters[i]}</span><span lang="es">${esc(o.es)}</span></button>`).join('')}</div>`;
+  } else {
+    const o=t.opts[C.picked]; const right=o.c;
+    below=`<div class="feedback ${right?'good':'bad'}" style="margin-top:16px"><b>${right?'¡Correcto!':'Not quite.'}</b><span class="ink">${right?esc(o.why):`The reply that fits is <b class="es" lang="es">${esc(t.ans)}</b> (${esc(t.ansEn)}).`}</span></div>
+      <div class="optx talk"><div class="eyebrow">What each reply means</div><ul>${t.opts.map((x,i)=>`<li class="${x.c?'correct':''}${i===C.picked?' picked':''}"><span><span class="ch" lang="es">${esc(x.es)}</span> ${speakBtn(x.es,true)} ${x.c?'<span class="tag good">fits</span>':i===C.picked?'<span class="tag bad">your pick</span>':''}</span><span class="en">${esc(x.en)}</span><span class="hint">${esc(x.why)}</span></li>`).join('')}</ul></div>
+      ${SR?`<div class="mic-box"><span><b>Now say it out loud.</b> <span class="sub">Tap the mic and say: <span lang="es" class="es">${esc(t.ans)}</span></span></span><div class="row"><button class="btn" type="button" id="micBtn">${MIC} Dilo <small>say it</small></button><span class="mic-out" id="micOut" aria-live="polite"></span></div></div>`:''}
+      <div class="row" style="margin-top:14px"><button class="btn primary" id="cNext">${C.i+1<C.turns.length?'Siguiente <small>next<span class="khint"> · enter</span></small>':'Finish'}</button></div>`;
+  }
+  main.innerHTML=`<section class="panel lift">
+    <div class="row between"><span class="eyebrow">Conversación · ${esc(C.title)}</span><span class="sub" style="font-variant-numeric:tabular-nums">${C.i+1} / ${C.turns.length} · ${C.score} right</span></div>
+    <div class="bar" style="margin:10px 0 14px"><i style="width:${pct(C.i/C.turns.length)}%"></i></div>
+    ${C.i===0&&!answered?`<p class="tip">${C.d?esc(C.d.set):'Ten questions from every unit, like the ones on a speaking test. Pick the reply that answers the question.'}</p>`:''}
+    <div class="talk-log">${log}${cur}${answered?meBubble(t):''}</div>
+    ${tools}${below}
+  </section>`;
+  main.querySelectorAll('.opt').forEach(b=>b.onclick=()=>answerTalk(+b.dataset.i));
+  if($('#cSlow')) $('#cSlow').onclick=()=>say(t.p,0.6);
+  if($('#cShow')) $('#cShow').onclick=()=>{ C.show=true; renderTalk(); };
+  if($('#cEn')) $('#cEn').onclick=()=>{ C.en=true; renderTalk(); };
+  if($('#micBtn')) $('#micBtn').onclick=()=>listenFor(t.ans);
+  if($('#cNext')){ const nb=$('#cNext'); nb.focus({preventScroll:true}); nb.onclick=()=>{ C.i++; C.picked=null; C.show=false; C.en=false; renderTalk(); }; }
+  else { const nowB=main.querySelector('.msg.now'); if(nowB&&C.i>0) nowB.scrollIntoView({block:'center'}); }
+  if(C.said!==C.i&&!answered){ C.said=C.i; say(t.p); }
+}
+function answerTalk(i){ if(!C||C.picked!==null) return; const t=C.turns[C.i]; C.picked=i; if(t.opts[i].c) C.score++; markStudied(); say(t.ans); renderTalk(); }
+function renderTalkDone(){
+  const n=C.turns.length, s=C.score;
+  if(!C.saved){ C.saved=true; const o=P.conv[C.id]||{best:0,n:0}; P.conv[C.id]={best:Math.max(o.best,pct(s/n)),n:o.n+1}; save(); }
+  const msg= s===n?'¡Perfecto! You can hold this whole conversation.': s>=n*0.8?'¡Excelente! Almost every reply fit.': s>=n*0.6?'¡Bien! Run it once more and it will stick.':'Good start. Try it again in Leer mode, then switch to Escuchar.';
+  const end=C.d&&C.d.end; const lines=[]; C.turns.forEach(t=>{ lines.push(t.p,t.ans); }); if(end) lines.push(end[0]);
+  main.innerHTML=`<section class="panel lift"><div class="eyebrow">Conversación · ${esc(C.title)}</div><h2 class="h2">${s} / ${n} · ${msg}</h2>
+    <div class="row" style="margin-top:16px">${canSpeak?`<button class="btn primary" id="cPlay">${SPEAKER} Play the whole conversation</button>`:''}<button class="btn" id="cAgain">Try again</button><button class="btn" id="cOther">Another conversation</button>${sampleFn&&C.d?'<button class="btn" id="cRole">Keep talking with Claude</button>':''}</div>
+    <div class="talk-log" style="margin-top:18px">${C.turns.map(t=>themBubble(t,{en:true})+meBubble(t)).join('')}${end?themBubble({who:C.d.who,p:end[0],e:end[1]},{en:true}):''}</div>
+    <p class="tip" style="margin-top:16px">Read it out loud as both people. Then try it with a friend or a parent: one of you plays ${C.d?esc(C.d.who):'the asker'}, the other plays you.</p></section>`;
+  if($('#cPlay')) $('#cPlay').onclick=()=>sayAll(lines);
+  $('#cAgain').onclick=()=>C.id==='quick'?startQuick():startConv(C.id);
+  $('#cOther').onclick=()=>{ if(canSpeak) speechSynthesis.cancel(); C=null; renderTalk(); };
+  if($('#cRole')) $('#cRole').onclick=()=>startRoleplay(C.d.id);
+}
+function renderTalkPicker(){
+  const mode=convMode();
+  main.innerHTML=`<section class="panel"><div class="eyebrow">Conversación · Conversation practice</div><h2 class="h2">Practice the back-and-forth</h2>
+    <p class="sub" style="margin-top:6px;max-width:62ch">Someone says a line out loud. You pick the reply that fits. After each answer you see what every reply means${SR?', then say the right one into the mic':''}.</p>
+    <div class="row" style="margin-top:14px"><div class="seg" role="group" aria-label="Mode"><button type="button" data-cmode="read" aria-pressed="${mode==='read'}">Leer <small>read + listen</small></button><button type="button" data-cmode="listen" aria-pressed="${mode==='listen'}">Escuchar <small>listen only</small></button></div>
+    <span class="sub" style="font-size:14px">${mode==='listen'?'The words stay hidden until you answer. This is how a speaking test feels.':'Start here. Switch to Escuchar once a conversation feels easy.'}</span></div>
+    ${canSpeak?'':'<p class="tip" style="margin-top:12px">This browser has no Spanish voice, so Escuchar mode will not work here. Leer mode still does.</p>'}
+    <div class="row" style="margin-top:16px"><button class="btn primary big" id="cQuick">Preguntas rápidas <small>10 questions from every unit${P.conv.quick?' · best '+P.conv.quick.best+'%':''}</small></button></div></section>
+  <section><div class="row between" style="margin-bottom:10px"><h2 class="h3">Charlas <span class="sub" style="font-weight:400;font-family:var(--body);font-size:15px">· one conversation per unit</span></h2></div>
+    <div class="grid">${DIALOGUES.map(d=>{ const b=P.conv[d.id]; const u=UNITS.find(x=>x.id===d.unit); return `<article class="unit">
+      <div><h3 lang="es">${esc(d.title)}</h3><div class="en">${esc(d.en)}</div></div>
+      <div class="bar sun" aria-label="Best score ${b?b.best:0}%"><i style="width:${b?b.best:0}%"></i></div>
+      <div class="meta"><span>${esc(u?u.name:'')} · with ${esc(d.who)}</span><span>${b?'best '+b.best+'%':'not tried'}</span></div>
+      <div class="row"><button class="btn" data-conv="${d.id}">Empezar <small>start</small></button></div></article>`; }).join('')}</div></section>
+  ${sampleFn?`<section class="panel"><div class="eyebrow">Role-play with Claude</div><h2 class="h3">Have a real conversation</h2>
+    <p class="sub" style="margin:4px 0 12px;max-width:62ch">Claude plays the other person and only speaks Spanish. Type your replies. If you make a mistake, you get a short tip in English and the conversation keeps going.</p>
+    <div class="chips">${DIALOGUES.map(d=>`<button class="chip" type="button" data-role="${d.id}">${esc(d.en)}</button>`).join('')}</div></section>`:''}`;
+  main.querySelectorAll('[data-cmode]').forEach(b=>b.onclick=()=>{ P.settings.convMode=b.dataset.cmode; save(); renderTalk(); });
+  $('#cQuick').onclick=startQuick;
+  main.querySelectorAll('[data-conv]').forEach(b=>b.onclick=()=>startConv(b.dataset.conv));
+  main.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>startRoleplay(b.dataset.role));
+}
+document.addEventListener('keydown',e=>{ if(view!=='talk'||!C||C.i>=C.turns.length||C.picked!==null) return; if(e.target.matches('input,select,textarea')) return; const k=e.key.toUpperCase(); let i='ABC'.indexOf(k); if(i<0&&['1','2','3'].includes(e.key)) i=+e.key-1; if(i>=0&&i<C.turns[C.i].opts.length) answerTalk(i); });
+
+// Say it out loud: the browser's speech recognition (Chrome, Edge, Safari). Practice only, never graded.
+const NUMWORD=/^(cero|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieci\w*|veint\w*|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|y)$/;
+function matchScore(target,heard){
+  const tw=norm(target).split(' ').filter(Boolean); const hw=new Set(norm(heard).split(' ')); const digits=/\d/.test(heard);
+  return tw.length? tw.filter(w=>hw.has(w)||(digits&&NUMWORD.test(w))).length/tw.length : 0;
+}
+function listenFor(target){
+  const out=$('#micOut'), btn=$('#micBtn'); if(!SR||!out) return;
+  let r; try{ r=new SR(); }catch(e){ out.textContent='Speech recognition is not available here.'; return; }
+  r.lang='es-MX'; r.interimResults=false; r.maxAlternatives=3;
+  let done=false; btn.disabled=true; out.className='mic-out'; out.textContent='Listening… say it now.';
+  r.onresult=e=>{ done=true; let best='', bs=-1; for(const a of e.results[0]){ const s=matchScore(target,a.transcript); if(s>bs){ bs=s; best=a.transcript; } }
+    out.className='mic-out '+(bs>=0.8?'good':bs>=0.5?'warn':'');
+    out.innerHTML=(bs>=0.8?'¡Muy bien! ':bs>=0.5?'Close! ':'')+`I heard: “<span lang="es">${esc(best)}</span>”`+(bs<0.8?'. Listen once more and try again.':''); };
+  r.onerror=e=>{ done=true; out.className='mic-out'; out.textContent= (e.error==='not-allowed'||e.error==='service-not-allowed')? 'The microphone is blocked in this browser. Say it out loud anyway, it still helps.' : e.error==='no-speech'? 'I did not hear anything. Tap the mic and try again.' : 'That did not work. Tap the mic and try again.'; };
+  r.onend=()=>{ btn.disabled=false; if(!done) out.textContent='I did not hear anything. Tap the mic and try again.'; };
+  try{ r.start(); }catch(e){ btn.disabled=false; out.textContent='The mic could not start. Try again.'; }
+}
+
+// Role-play with Claude (claude.ai only): the Tutor tab runs with role-play rules instead of tutor rules.
+function roleplayRules(d){ return `You are ${d.who}, ${d.role}, in a Spanish role-play with a 9th grader in Spanish 1 who is catching up. Scene: ${d.set} Stay in character and speak only Spanish at a Spanish 1 level: present tense, short sentences (one or two per turn), common words. End each turn with one simple question so the student always has something to answer. If the student makes a mistake, keep the conversation going, then add a new line that starts with "Tip:" and gives a short, kind correction in English. If they write in English or seem stuck, give them one Spanish sentence they could say. After about 8 exchanges, wrap the scene up warmly, then give 2 or 3 sentences of encouraging feedback in English. Plain text only, no markdown symbols.`; }
+function startRoleplay(id){ const d=DIALOGUES.find(x=>x.id===id); if(!d||!sampleFn) return; if(T.ctl) T.ctl.abort(); T={turns:[],busy:false,ctl:null,scene:d}; go('tutor'); ask('¡Hola!'); }
+
 /* ============================ NOTES ============================ */
 function renderNotes(){
   const t=(rows)=>`<div class="tbl"><table>${rows}</table></div>`;
@@ -983,14 +1362,14 @@ function renderNotes(){
     <p><b>ESTAR</b> is for how or where something is right now. Remember <b>PLACE</b>: Position, Location, Action (-ando/-iendo), Condition, Emotion. <span class="es">Estoy cansado. Está en la biblioteca.</span></p>
     <p class="tip">Quick test: could it change by tomorrow? Then it is probably <span class="es">estar</span>. <span class="es">Estoy triste</span> (today) vs. <span class="es">Soy serio</span> (my personality).</p>
   
-    ${practice([{act:'drill',arg:'serestar',label:'Ser or estar?',sub:'sentences'},{act:'verbs',arg:'serestar',label:'Verb drill',sub:'ser &amp; estar forms'}])}
+    ${practice([{act:'drill',arg:'serestar',label:'Ser or estar?',sub:'sentences'},{act:'verbs',arg:'serestar',label:'Verb drill',sub:'ser &amp; estar forms'},{act:'talk',arg:'descripciones',label:'Conversación',sub:'¿Cómo eres?'}])}
   </div></details>
   <details><summary>Tener, ir, and hacer</summary><div class="body">
     ${t(`<thead><tr><th></th><th>tener</th><th>ir</th><th>hacer</th></tr></thead><tbody>${PRON.map((p,i)=>`<tr><td>${p}</td><td><b class="es">${conj(VERBS.find(v=>v.inf==='tener'))[i]}</b></td><td><b class="es">${conj(VERBS.find(v=>v.inf==='ir'))[i]}</b></td><td><b class="es">${conj(VERBS.find(v=>v.inf==='hacer'))[i]}</b></td></tr>`).join('')}</tbody>`)}
     <p><b>Tener expressions</b> use "have" where English uses "am": <span class="es">tengo hambre</span> (I am hungry), <span class="es">tengo sed</span> (thirsty), <span class="es">tengo frío</span> (cold), <span class="es">tengo quince años</span> (I am 15), <span class="es">tengo que estudiar</span> (I have to study).</p>
     <p><b>Ir a + place</b> = going somewhere: <span class="es">Voy a la playa.</span> <b>Ir a + infinitive</b> = going to do something: <span class="es">Voy a estudiar.</span> Note <span class="es">a + el = al</span>: <span class="es">Voy al cine.</span></p>
   
-    ${practice([{act:'verbs',arg:'tih',label:'Verb drill',sub:'tener, ir &amp; hacer'},{act:'verbs',arg:'tenerir',label:'Verb drill',sub:'tener &amp; ir only'}])}
+    ${practice([{act:'verbs',arg:'tih',label:'Verb drill',sub:'tener, ir &amp; hacer'},{act:'verbs',arg:'tenerir',label:'Verb drill',sub:'tener &amp; ir only'},{act:'talk',arg:'lugares',label:'Conversación',sub:'¿Adónde vas?'}])}
   </div></details>
   <details><summary>Gustar (to like)</summary><div class="body">
     <p>Gustar literally means "to be pleasing to". So you say "to me is pleasing the pizza". You only need two forms in Spanish 1:</p>
@@ -999,7 +1378,7 @@ function renderNotes(){
     ${t(`<thead><tr><th>Who likes it</th><th>Spanish</th></tr></thead><tbody><tr><td>I</td><td><b class="es">me</b> gusta(n)</td></tr><tr><td>you</td><td><b class="es">te</b> gusta(n)</td></tr><tr><td>he / she / you formal</td><td><b class="es">le</b> gusta(n)</td></tr><tr><td>we</td><td><b class="es">nos</b> gusta(n)</td></tr><tr><td>they / you all</td><td><b class="es">les</b> gusta(n)</td></tr></tbody>`)}
     <p>To say who, add <span class="es">a</span>: <span class="es">A Marta le gusta leer.</span> To say no: <span class="es">No me gusta.</span></p>
   
-    ${practice([{act:'drill',arg:'gustar',label:'Gusta or gustan?',sub:'sentences'},{act:'cards',arg:'actividades',label:'Flashcards',sub:'activities'}])}
+    ${practice([{act:'drill',arg:'gustar',label:'Gusta or gustan?',sub:'sentences'},{act:'cards',arg:'actividades',label:'Flashcards',sub:'activities'},{act:'talk',arg:'actividades',label:'Conversación',sub:'¿Qué te gusta hacer?'}])}
   </div></details>
   <details><summary>Nouns, gender, and el / la / un / una</summary><div class="body">
     <p>Every noun is masculine or feminine, even objects. Words ending in <b>-o</b> are usually masculine (<span class="es">el libro</span>). Words ending in <b>-a</b> are usually feminine (<span class="es">la mesa</span>). Also feminine: <b>-ción, -dad</b> (<span class="es">la estación, la ciudad</span>).</p>
@@ -1021,7 +1400,7 @@ function renderNotes(){
     ${t(`<tbody><tr><td><b class="es">¿Qué?</b></td><td>What?</td><td><span class="es">¿Qué es esto?</span></td></tr><tr><td><b class="es">¿Quién?</b></td><td>Who?</td><td><span class="es">¿Quién es ella?</span></td></tr><tr><td><b class="es">¿Dónde?</b></td><td>Where?</td><td><span class="es">¿Dónde está el baño?</span></td></tr><tr><td><b class="es">¿Cuándo?</b></td><td>When?</td><td><span class="es">¿Cuándo es la fiesta?</span></td></tr><tr><td><b class="es">¿Por qué?</b></td><td>Why?</td><td><span class="es">¿Por qué estudias?</span> — <span class="es">Porque…</span></td></tr><tr><td><b class="es">¿Cómo?</b></td><td>How?</td><td><span class="es">¿Cómo estás?</span></td></tr><tr><td><b class="es">¿Cuánto/a?</b> / <b class="es">¿Cuántos/as?</b></td><td>How much / many?</td><td><span class="es">¿Cuántos años tienes?</span></td></tr><tr><td><b class="es">¿Cuál?</b></td><td>Which?</td><td><span class="es">¿Cuál es tu clase favorita?</span></td></tr></tbody>`)}
     <p>Yes/no questions: just raise your voice at the end, or flip the order. <span class="es">¿Hablas español?</span> = Do you speak Spanish?</p>
   
-    ${practice([{act:'quiz',arg:'preguntas',label:'Quiz',sub:'question words'},{act:'cards',arg:'preguntas',label:'Flashcards',sub:'question words'}])}
+    ${practice([{act:'quiz',arg:'preguntas',label:'Quiz',sub:'question words'},{act:'cards',arg:'preguntas',label:'Flashcards',sub:'question words'},{act:'talk',arg:'preguntas',label:'Conversación',sub:'¿A qué hora?'}])}
   </div></details>
   <details><summary>Numbers 0–100: the patterns</summary><div class="body">
     <ul><li><b>0–15</b> you just memorize: <span class="es">cero, uno, dos, tres, cuatro, cinco, seis, siete, ocho, nueve, diez, once, doce, trece, catorce, quince</span>.</li>
@@ -1030,7 +1409,7 @@ function renderNotes(){
     <li><b>31 and up</b> = tens + <span class="es">y</span> + ones: <span class="es">treinta y uno, cuarenta y cinco, noventa y nueve</span>.</li>
     <li>Tens: <span class="es">diez, veinte, treinta, cuarenta, cincuenta, sesenta, setenta, ochenta, noventa, cien</span>. Most end in <b>-enta</b>.</li></ul>
   
-    ${practice([{act:'quiz',arg:'numeros',label:'Quiz',sub:'numbers'},{act:'cards',arg:'numeros',label:'Flashcards',sub:'numbers'}])}
+    ${practice([{act:'quiz',arg:'numeros',label:'Quiz',sub:'numbers'},{act:'cards',arg:'numeros',label:'Flashcards',sub:'numbers'},{act:'talk',arg:'numeros',label:'Conversación',sub:'ages &amp; numbers'}])}
   </div></details>
   <details><summary>Telling time</summary><div class="body">
     <p><span class="es">¿Qué hora es?</span> = What time is it?</p>
@@ -1049,6 +1428,7 @@ function renderNotes(){
     <li><b>Be honest with the thumbs.</b> Thumbs down is not failing. It brings the word back in a minute, and again tomorrow, which is exactly how it sticks.</li>
     <li><b>Learn nouns with their article.</b> Always <span class="es">la mesa</span>, never just <span class="es">mesa</span>. Then el/la is free.</li>
     <li><b>Verbs: know the endings first.</b> Once -o, -as, -a, -amos, -an is automatic, every regular verb is easy.</li>
+    <li><b>Practice talking, not just words.</b> In Conversación, run a unit's charla in Leer mode, then again in Escuchar mode with the words hidden. That is what a speaking test feels like.</li>
     <li><b>Ask the tutor</b> when a rule does not click. There are no dumb questions in there.</li></ul>
   </div></details>
   </div>`;
@@ -1065,22 +1445,25 @@ function renderTutor(){
     return;
   }
   const starters=['Explain ser vs estar like I am 14','Quiz me on numbers 1 to 30','How do I say "I like to dance with my friends"?','What is the difference between tú and usted?','Give me 5 sentences using tener'];
-  main.innerHTML=`<section class="panel lift"><div class="row between"><div><div class="eyebrow">Tutor · Ask Claude</div><h2 class="h3">Ask anything about Spanish 1</h2></div>${T.turns.length?'<button class="btn ghost" id="tClear">Clear chat</button>':''}</div>
+  const rp=T.scene;
+  main.innerHTML=`<section class="panel lift"><div class="row between"><div><div class="eyebrow">${rp?'Role-play · '+esc(rp.en):'Tutor · Ask Claude'}</div><h2 class="h3">${rp?'You are talking with '+esc(rp.who):'Ask anything about Spanish 1'}</h2></div>${rp?'<button class="btn ghost" id="tEnd">End role-play</button>':T.turns.length?'<button class="btn ghost" id="tClear">Clear chat</button>':''}</div>
     <div class="chat" id="chat" style="margin-top:14px">${T.turns.length?'':'<p class="sub">Stuck on a rule? Want a mini quiz? Type it below, in English or Spanish.</p>'}${T.turns.map(t=>`<div class="msg ${t.role==='user'?'me':'ai'}">${esc(t.content)}</div>`).join('')}${T.busy?'<div class="msg ai thinking" id="live">Thinking…</div>':''}</div>
-    ${T.turns.length?'':`<div class="chips" style="margin-top:12px">${starters.map(s=>`<button class="chip" data-q="${esc(s)}">${esc(s)}</button>`).join('')}</div>`}
-    <form class="ask" id="askForm" style="margin-top:14px"><input type="text" id="askIn" placeholder="Type your question…" aria-label="Your question" ${T.busy?'disabled':''}>${T.busy?'<button class="btn" type="button" id="stopBtn">Stop</button>':'<button class="btn primary" type="submit">Enviar <small>send</small></button>'}</form>
-    <p class="sub" style="font-size:13px;margin-top:8px">The tutor uses your Claude account. It only sees this chat, not your progress.</p>
+    ${T.turns.length||rp?'':`<div class="chips" style="margin-top:12px">${starters.map(s=>`<button class="chip" data-q="${esc(s)}">${esc(s)}</button>`).join('')}</div>`}
+    <form class="ask" id="askForm" style="margin-top:14px"><input type="text" id="askIn" placeholder="${rp?'Reply in Spanish…':'Type your question…'}" aria-label="${rp?'Your reply':'Your question'}" ${rp?'lang="es" autocapitalize="off" spellcheck="false"':''} ${T.busy?'disabled':''}>${T.busy?'<button class="btn" type="button" id="stopBtn">Stop</button>':'<button class="btn primary" type="submit">Enviar <small>send</small></button>'}</form>
+    ${rp?`<div style="margin-top:10px">${accentKeys()}</div>`:''}
+    <p class="sub" style="font-size:13px;margin-top:8px">${rp?'Stuck? Type it in English and Claude will show you how to say it.':'The tutor uses your Claude account. It only sees this chat, not your progress.'}</p>
   </section>`;
   main.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>ask(b.dataset.q));
   $('#askForm').onsubmit=e=>{ e.preventDefault(); const v=$('#askIn').value.trim(); if(v) ask(v); };
   if($('#stopBtn')) $('#stopBtn').onclick=()=>T.ctl&&T.ctl.abort();
   if($('#tClear')) $('#tClear').onclick=()=>{ T.turns=[]; renderTutor(); };
-  if(!T.busy){ const i=$('#askIn'); i.focus(); }
+  if($('#tEnd')) $('#tEnd').onclick=()=>{ if(T.ctl) T.ctl.abort(); T={turns:[],busy:false,ctl:null}; go('talk'); };
+  if(!T.busy){ const i=$('#askIn'); i.focus(); lastInput=i; }
   const c=$('#chat'); c.scrollTop=c.scrollHeight;
 }
 async function ask(q){
   if(T.busy||!sampleFn) return; T.turns.push({role:'user',content:q}); T.busy=true; T.ctl=new AbortController(); renderTutor();
-  const input=[{role:'user',content:TUTOR_RULES},...T.turns.slice(-12)];
+  const input=[{role:'user',content:T.scene?roleplayRules(T.scene):TUTOR_RULES},...T.turns.slice(-12)];
   let text='';
   try{
     const r=await sampleFn(input,{cache:false,signal:T.ctl.signal,onText:({text:t})=>{ text=t; const l=document.getElementById('live'); if(l){ l.classList.remove('thinking'); l.textContent=t; } }});
