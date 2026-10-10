@@ -230,6 +230,13 @@ details ul{margin:0;padding-left:20px}
 .optx.talk li{display:flex;flex-direction:column;gap:2px}
 .optx.talk .ch{font-size:17px;min-width:0}
 .optx.talk .en{font-size:14px;color:var(--muted)}
+.vlist{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.vlist li{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:2px 10px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.vlist li .es{font-size:18px}
+.vlist li .en{color:var(--muted);text-align:right}
+.vlist li.playing{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent)}
+.vlist li.playing .speak{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+@media (max-width:640px){.vlist li{grid-template-columns:auto 1fr;padding:6px 10px}.vlist li .speak{grid-row:span 2}.vlist li .en{grid-column:2;text-align:left;font-size:14px;line-height:1.3}.vlist li .es{font-size:17px}}
 .mic-box{display:flex;flex-direction:column;gap:6px;margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--surface-2)}
 .mic-out.good{color:var(--good);font-weight:700}
 .mic-out.warn{color:var(--warn);font-weight:700}
@@ -782,7 +789,7 @@ function playOne(t,rate,seq,done){
 function say(t,rate){ if(!canSpeak) return; stopSpeech(); playOne(t,rate,playSeq); }
 function sayAll(lines,onLine){ if(!canSpeak) return; stopSpeech(); const seq=playSeq; let i=0; const next=()=>{ if(seq!==playSeq) return; if(i>=lines.length){ onLine&&onLine(-1); return; } onLine&&onLine(i); const t=lines[i++]; playOne(t,0,seq,()=>setTimeout(next,350)); }; next(); }
 // Play every choice in order, lighting up the row being read.
-function playChoices(lines){ const rows=main.querySelectorAll('.ao-row'); sayAll(lines,i=>rows.forEach((r,k)=>r.classList.toggle('playing',k===i))); }
+function playChoices(lines,sel){ const rows=main.querySelectorAll(sel||'.ao-row'); sayAll(lines,i=>rows.forEach((r,k)=>r.classList.toggle('playing',k===i))); }
 function speakBtn(t,sm){ return canSpeak? '<button class="speak'+(sm?' sm':'')+'" type="button" data-say="'+esc(t)+'" aria-label="Hear it in Spanish" title="Hear it">'+SPEAKER+'</button>' : ''; }
 // Solo audio: the Spanish in questions and answers is hidden until the learner answers or taps Show the words.
 function audioOnly(){ return canSpeak && !!P.settings.audioOnly; }
@@ -968,7 +975,7 @@ function renderHome(){
 
 /* ============================ FLASHCARDS ============================ */
 let FC=null;
-function startCards(ids,title){ FC={queue:ids.slice(),i:0,flipped:false,missed:[],stats:{got:0,miss:0},title}; go('cards'); }
+function startCards(ids,title,conv){ FC={queue:ids.slice(),i:0,flipped:false,missed:[],stats:{got:0,miss:0},title,conv}; go('cards'); }
 function renderCards(){
   if(!FC){ // picker
     main.innerHTML=`<section class="panel"><div class="eyebrow">Tarjetas · Flashcards</div><h2 class="h2">What do you want to practice?</h2>
@@ -990,11 +997,13 @@ function renderCards(){
       <div class="row" style="margin-top:18px">
         ${uniqMissed.length?`<button class="btn primary" id="againMissed">Review the ${uniqMissed.length} I missed</button>`:''}
         <button class="btn" id="againAll">Do this set again</button>
+        ${FC.conv?`<button class="btn primary" id="fcConv">Now try the conversation</button>`:''}
         <button class="btn ghost" id="backHome">Back to Hoy</button></div>
       ${uniqMissed.length?`<div class="tbl" style="margin-top:18px"><table><thead><tr><th>Missed</th><th>Meaning</th></tr></thead><tbody>${uniqMissed.map(id=>{const x=cardById(id);return `<tr><td><b class="es">${esc(x.c[0])}</b></td><td>${esc(x.c[1])}</td></tr>`}).join('')}</tbody></table></div>`:''}
     </section>`;
-    if($('#againMissed')) $('#againMissed').onclick=()=>startCards(shuffle(uniqMissed),FC.title+' · missed');
-    $('#againAll').onclick=()=>startCards(shuffle([...new Set(FC.queue)]),FC.title);
+    if($('#againMissed')) $('#againMissed').onclick=()=>startCards(shuffle(uniqMissed),FC.title+' · missed',FC.conv);
+    $('#againAll').onclick=()=>startCards(shuffle([...new Set(FC.queue)]),FC.title,FC.conv);
+    if($('#fcConv')) $('#fcConv').onclick=()=>{ const id=FC.conv; FC=null; LS=null; if(C&&C.id===id&&C.i<C.turns.length) go('talk'); else startConv(id); };
     $('#backHome').onclick=()=>{ FC=null; go('home'); };
     return;
   }
@@ -1324,22 +1333,24 @@ document.addEventListener('keydown',e=>{ if(view!=='verbs'||!V.cur||V.state!=='a
 // Scripted conversations: the partner speaks a line, the learner picks the reply that fits.
 // Two modes: 'read' shows the partner's words, 'listen' hides them until the learner answers.
 let C=null;
+let LS=null; // vocabulary lesson for one conversation: {id}
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition||null;
 const MIC='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>';
 function convMode(){ return P.settings.convMode||'read'; }
 function prepTurn(t,quick,who){ const alt=quick&&Array.isArray(t.q); return {p:alt?t.q[0]:t.p, e:alt?t.q[1]:t.e, who, ans:t.r[0][0], ansEn:t.r[0][1], opts:shuffle(t.r.map((o,k)=>({es:o[0],en:o[1],why:o[2],c:k===0})))}; }
-function newConv(id,title,d,turns){ C={id,title,d,turns,i:0,picked:null,score:0,said:-1,show:false,en:false,saved:false}; go('talk'); }
+function newConv(id,title,d,turns){ LS=null; C={id,title,d,turns,i:0,picked:null,score:0,said:-1,show:false,en:false,saved:false}; go('talk'); }
 function startConv(id){ const d=DIALOGUES.find(x=>x.id===id); newConv(id,d.title,d,d.turns.map(t=>prepTurn(t,false,d.who))); }
 function startQuick(){ const pool=[]; DIALOGUES.forEach(d=>d.turns.forEach(t=>{ if(t.q) pool.push(prepTurn(t,true,d.who)); })); newConv('quick','Preguntas rápidas',null,shuffle(pool).slice(0,10)); }
 function themBubble(t,{hide,en,now}={}){ return `<div class="msg ai${now?' now':''}"${now&&canSpeak?` data-say="${esc(t.p)}" role="button" tabindex="0" aria-label="Play ${esc(t.who)}'s line"`:''}><span class="who">${esc(t.who)}</span>${hide?'<span class="hid">Tap to listen, then pick your reply.</span>':`<span class="line" lang="es">${esc(t.p)}</span>`}${speakBtn(t.p,true)}${en?`<span class="tr">${esc(t.e)}</span>`:''}</div>`; }
 function meBubble(t){ return `<div class="msg me"><span class="who">Tú</span><span class="line" lang="es">${esc(t.ans)}</span>${speakBtn(t.ans,true)}</div>`; }
 function renderTalk(){
+  if(LS) return renderLesson();
   if(!C) return renderTalkPicker();
   if(C.i>=C.turns.length) return renderTalkDone();
   const t=C.turns[C.i]; const answered=C.picked!==null; const ao=audioOnly(); const listen=ao||convMode()==='listen'; const letters='ABC';
   const log=C.turns.slice(0,C.i).map(x=>themBubble(x,{en:true})+meBubble(x)).join('');
   const cur=themBubble(t,{hide:listen&&!C.show&&!answered,en:C.en||answered,now:!answered});
-  const tools=answered?'':`<div class="talk-tools">${canSpeak?`<button class="btn" type="button" data-say="${esc(t.p)}">${SPEAKER} Otra vez <small>again</small></button><button class="btn" type="button" id="cSlow">Más despacio <small>slower</small></button>`:''}${listen&&!C.show?'<button class="btn ghost" type="button" id="cShow">Show the question</button>':''}${C.en?'':'<button class="btn ghost" type="button" id="cEn">What does it mean?</button>'}</div>`;
+  const tools=answered?'':`<div class="talk-tools">${canSpeak?`<button class="btn" type="button" data-say="${esc(t.p)}">${SPEAKER} Otra vez <small>again</small></button><button class="btn" type="button" id="cSlow">Más despacio <small>slower</small></button>`:''}${listen&&!C.show?'<button class="btn ghost" type="button" id="cShow">Show the question</button>':''}${C.en?'':'<button class="btn ghost" type="button" id="cEn">What does it mean?</button>'}${C.d?'<button class="btn ghost" type="button" id="cVocab">Learn the words</button>':''}</div>`;
   let below='';
   if(!answered){
     below=`<div class="eyebrow" style="margin-top:18px">Your reply</div>
@@ -1366,6 +1377,7 @@ function renderTalk(){
   if($('#cShow')) $('#cShow').onclick=()=>{ C.show=true; renderTalk(); };
   if($('#cShowR')) $('#cShowR').onclick=()=>{ C.showR=true; renderTalk(); };
   if($('#cEn')) $('#cEn').onclick=()=>{ C.en=true; renderTalk(); };
+  if($('#cVocab')) $('#cVocab').onclick=()=>openLesson(C.id);
   if($('#cPlayAll')) $('#cPlayAll').onclick=()=>playChoices(t.opts.map(o=>o.es));
   if($('#micBtn')) $('#micBtn').onclick=()=>listenFor(t.ans);
   if($('#cNext')){ const nb=$('#cNext'); nb.focus({preventScroll:true}); nb.onclick=()=>{ C.i++; C.picked=null; C.show=C.showR=false; C.en=false; renderTalk(); }; }
@@ -1381,13 +1393,49 @@ function renderTalkDone(){
   const msg= s===n?'¡Perfecto! You can hold this whole conversation.': s>=n*0.8?'¡Excelente! Almost every reply fit.': s>=n*0.6?'¡Bien! Run it once more and it will stick.':'Good start. Try it again in Leer mode, then switch to Escuchar.';
   const end=C.d&&C.d.end; const lines=[]; C.turns.forEach(t=>{ lines.push(t.p,t.ans); }); if(end) lines.push(end[0]);
   main.innerHTML=`<section class="panel lift"><div class="eyebrow">Conversación · ${esc(C.title)}</div><h2 class="h2">${s} / ${n} · ${msg}</h2>
-    <div class="row" style="margin-top:16px">${canSpeak?`<button class="btn primary" id="cPlay">${SPEAKER} Play the whole conversation</button>`:''}<button class="btn" id="cAgain">Try again</button><button class="btn" id="cOther">Another conversation</button>${sampleFn&&C.d?'<button class="btn" id="cRole">Keep talking with Claude</button>':''}</div>
+    <div class="row" style="margin-top:16px">${canSpeak?`<button class="btn primary" id="cPlay">${SPEAKER} Play the whole conversation</button>`:''}${C.d&&s<n*0.8?'<button class="btn primary" id="cVocab">Learn the words, then try again</button>':''}<button class="btn" id="cAgain">Try again</button>${C.d&&s>=n*0.8?'<button class="btn" id="cVocab">Review the words</button>':''}<button class="btn" id="cOther">Another conversation</button>${sampleFn&&C.d?'<button class="btn" id="cRole">Keep talking with Claude</button>':''}</div>
     <div class="talk-log" style="margin-top:18px">${C.turns.map(t=>themBubble(t,{en:true})+meBubble(t)).join('')}${end?themBubble({who:C.d.who,p:end[0],e:end[1]},{en:true}):''}</div>
     <p class="tip" style="margin-top:16px">Read it out loud as both people. Then try it with a friend or a parent: one of you plays ${C.d?esc(C.d.who):'the asker'}, the other plays you.</p></section>`;
   if($('#cPlay')) $('#cPlay').onclick=()=>sayAll(lines);
   $('#cAgain').onclick=()=>C.id==='quick'?startQuick():startConv(C.id);
+  if($('#cVocab')) $('#cVocab').onclick=()=>openLesson(C.id);
   $('#cOther').onclick=()=>{ stopSpeech(); C=null; renderTalk(); };
   if($('#cRole')) $('#cRole').onclick=()=>startRoleplay(C.d.id);
+}
+// Vocabulary lesson: the unit words, verb forms and partner lines a conversation uses, so she can learn them before trying it.
+function lessonFor(d){
+  const lines=[]; d.turns.forEach(t=>{ lines.push(t.p); if(Array.isArray(t.q)) lines.push(t.q[0]); t.r.forEach(r=>lines.push(r[0])); }); if(d.end) lines.push(d.end[0]);
+  const tok=x=>x.normalize('NFC').toLowerCase().replace(/\(.*?\)/g,' ').replace(/[¿?¡!.,;:"…]/g,' ').replace(/\s+/g,' ').trim();
+  let hay=' '+lines.map(tok).join(' | ')+' ';
+  const forms=es=>{ const t=tok(es).replace(/^(el|la|los|las|un|una)(\/(el|la|los|las))? /,''); const out=new Set();
+    t.split(/\s*\/\s*(?=\S{3,})|\s+o\s+/).forEach(a=>{ a=a.trim(); if(a.length>=2&&!a.includes('/')) out.add(a); });
+    const m=t.match(/^(\S+)o\/a$/); if(m) ['o','a','os','as'].forEach(e=>out.add(m[1]+e));
+    return [...out]; };
+  const words=[]; const used=[];
+  [UNITS.find(u=>u.id===d.unit),...UNITS.filter(u=>u.id!==d.unit)].forEach(u=>u&&u.cards.forEach((c,i)=>{
+    if(words.some(w=>w.es===c[0])) return; const hit=forms(c[0]).filter(f=>hay.includes(' '+f+' ')); if(!hit.length) return;
+    words.push({id:cardId(u,i),es:c[0],en:c[1]}); hit.forEach(f=>{ if(f.includes(' ')) used.push(f); }); }));
+  used.forEach(f=>{ hay=hay.split(' '+f+' ').join(' | '); }); // so "de nada" is not read as a form of nadar
+  const verbs=[];
+  VERBS.forEach(v=>conj(v).forEach((f,i)=>{ if(i===4||verbs.some(x=>x.form===f)) return; if(hay.includes(' '+tok(f)+' ')) verbs.push({form:f,inf:v.inf,en:v.en,pi:i}); }));
+  const said=[]; d.turns.forEach(t=>said.push([t.p,t.e])); if(d.end) said.push(d.end);
+  return {words,verbs,said};
+}
+function openLesson(id){ stopSpeech(); LS={id}; if(view==='talk') renderTalk(); else go('talk'); window.scrollTo({top:0}); }
+function renderLesson(){
+  const d=DIALOGUES.find(x=>x.id===LS.id); const L=lessonFor(d); const resume=C&&C.id===d.id&&C.i<C.turns.length&&(C.i>0||C.picked!==null);
+  const row=(es,en)=>`<li>${speakBtn(es,true)}<b class="es" lang="es">${esc(es)}</b><span class="en">${esc(en)}</span></li>`;
+  main.innerHTML=`<section class="panel lift"><div class="eyebrow">Vocabulario · ${esc(d.title)}</div><h2 class="h2">Learn the words first</h2>
+    <p class="sub" style="margin-top:6px;max-width:62ch">These are the words in this conversation with ${esc(d.who)}. Tap a speaker, say each one out loud, then practice them as flashcards.</p>
+    <div class="row" style="margin-top:14px">${canSpeak?`<button class="btn" type="button" id="lHear">${SPEAKER} Hear the words</button>`:''}${L.words.length?`<button class="btn" type="button" id="lCards">Flashcards <small>${L.words.length} words</small></button>`:''}<button class="btn primary" type="button" id="lStart">${resume?'Back to the conversation':'Start the conversation'}</button></div></section>
+  <section class="panel"><div class="eyebrow">Words · ${L.words.length}</div><ul class="vlist" id="lWords">${L.words.map(w=>row(w.es,w.en)).join('')}</ul></section>
+  ${L.verbs.length?`<section class="panel"><div class="eyebrow">Verb forms you'll hear</div><ul class="vlist">${L.verbs.map(v=>row(v.form,`${v.inf} (${v.en}), the ${PRON[v.pi].split(' / ')[0]} form`)).join('')}</ul></section>`:''}
+  <section class="panel"><div class="eyebrow">What ${esc(d.who)} says</div><p class="sub" style="margin:4px 0 0">Know what each line means before you answer it.</p><ul class="vlist">${L.said.map(([es,en])=>row(es,en)).join('')}</ul></section>
+  <div class="row"><button class="btn ghost" type="button" id="lBack">All conversations</button></div>`;
+  if($('#lHear')) $('#lHear').onclick=()=>playChoices(L.words.map(w=>w.es),'#lWords li');
+  if($('#lCards')) $('#lCards').onclick=()=>startCards(L.words.map(w=>w.id),'Vocabulario · '+d.title,d.id);
+  $('#lStart').onclick=()=>{ LS=null; if(resume) renderTalk(); else startConv(d.id); };
+  $('#lBack').onclick=()=>{ stopSpeech(); LS=null; C=null; renderTalk(); };
 }
 function renderTalkPicker(){
   const mode=convMode();
@@ -1402,13 +1450,14 @@ function renderTalkPicker(){
       <div><h3 lang="es">${esc(d.title)}</h3><div class="en">${esc(d.en)}</div></div>
       <div class="bar sun" aria-label="Best score ${b?b.best:0}%"><i style="width:${b?b.best:0}%"></i></div>
       <div class="meta"><span>${esc(u?u.name:'')} · with ${esc(d.who)}</span><span>${b?'best '+b.best+'%':'not tried'}</span></div>
-      <div class="row"><button class="btn" data-conv="${d.id}">Empezar <small>start</small></button></div></article>`; }).join('')}</div></section>
+      <div class="row"><button class="btn" data-conv="${d.id}">Empezar <small>start</small></button><button class="btn ghost" data-vocab="${d.id}">Vocabulario <small>learn the words</small></button></div></article>`; }).join('')}</div></section>
   ${sampleFn?`<section class="panel"><div class="eyebrow">Role-play with Claude</div><h2 class="h3">Have a real conversation</h2>
     <p class="sub" style="margin:4px 0 12px;max-width:62ch">Claude plays the other person and only speaks Spanish. Type your replies. If you make a mistake, you get a short tip in English and the conversation keeps going.</p>
     <div class="chips">${DIALOGUES.map(d=>`<button class="chip" type="button" data-role="${d.id}">${esc(d.en)}</button>`).join('')}</div></section>`:''}`;
   main.querySelectorAll('[data-cmode]').forEach(b=>b.onclick=()=>{ P.settings.convMode=b.dataset.cmode; save(); renderTalk(); });
   $('#cQuick').onclick=startQuick;
   main.querySelectorAll('[data-conv]').forEach(b=>b.onclick=()=>startConv(b.dataset.conv));
+  main.querySelectorAll('[data-vocab]').forEach(b=>b.onclick=()=>openLesson(b.dataset.vocab));
   main.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>startRoleplay(b.dataset.role));
 }
 document.addEventListener('keydown',e=>{ if(view!=='talk'||!C||C.i>=C.turns.length||C.picked!==null) return; if(e.target.matches('input,select,textarea')) return; const k=e.key.toUpperCase(); let i='ABC'.indexOf(k); if(i<0&&['1','2','3'].includes(e.key)) i=+e.key-1; if(i>=0&&i<C.turns[C.i].opts.length) answerTalk(i); });
