@@ -25,6 +25,17 @@ Your progress is saved in the browser you use, so stick with one browser on one 
 
 Tap the speaker icon on any card to hear it pronounced with your device's Spanish voice.
 
+### Solo audio
+
+The **Solo audio** button in the header switches the whole app to listening practice. The Spanish in each question and answer is hidden and spoken aloud instead:
+
+- **Tarjetas:** hear the word, then flip to see its meaning (and spelling).
+- **Prueba and grammar drills:** the Spanish question is spoken. Spanish choices become speaker buttons, with *Hear every choice* to play them all.
+- **Verbos:** hear the pronoun and verb, then pick the form by ear (Build) or type it (Type).
+- **Conversación:** always runs in Escuchar mode, and the replies are hidden too.
+
+Stuck? **Show the words** reveals that one question. *What does it mean?* still works in Conversación, and everything is shown once you answer. Notes and Tutor are unchanged. The setting is remembered, and it is unavailable in browsers with no Spanish voice.
+
 ## Files
 
 - `artifact.html` — the page source (published to claude.ai)
