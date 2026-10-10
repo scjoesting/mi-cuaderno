@@ -771,7 +771,7 @@ const THUMB_UP='<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stro
 const THUMB_DOWN='<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 13V4h3a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-3z"/><path d="M17 13l-4 8a2 2 0 0 1-2-2v-4H6a2 2 0 0 1-2-2.3l1.2-6A2 2 0 0 1 7.2 4H17"/></svg>';
 function genderTag(g){ return g==='m'?'<span class="tag m">el · masculine</span>':g==='f'?'<span class="tag f">la · feminine</span>':''; }
 
-// Pronunciation: recorded ElevenLabs clips (Lumina; Alejo for conversation partners) in audio/,
+// Pronunciation: recorded ElevenLabs clips (Lumina, for every line) in audio/,
 // named by a hash of the spoken text. Anything without a clip falls back to the browser's Spanish voice.
 const hasTTS='speechSynthesis' in window; const canSpeak=hasTTS||typeof Audio!=='undefined'; let esVoice=null;
 function pickVoice(){ try{ const vs=speechSynthesis.getVoices(); esVoice=vs.find(v=>/^es[-_](MX|US|419)/i.test(v.lang))||vs.find(v=>/^es/i.test(v.lang))||null; }catch(e){} }
@@ -1631,7 +1631,7 @@ async function ask(q){
 }
 
 /* ============================ AUDIO CLIP LIST ============================ */
-// Every line the app can speak, for tools/gen_audio.py. voice 'partner' = conversation partner (Alejo), 'main' = everything else (Lumina).
+// Every line the app can speak, for tools/gen_audio.py. voice 'partner' = conversation partner, 'main' = everything else (both Lumina; see VOICES there).
 function spokenLines(){
   const M=new Map(); const add=(t,voice)=>{ const k=speechText(t||''); if(!k) return; const o=M.get(k); if(!o) M.set(k,voice); else if(o!==voice) M.set(k,'main'); };
   UNITS.forEach(u=>u.cards.forEach(c=>{ add(c[0],'main'); if(/^(el|la) [^\/]+$/.test(c[0])) add(c[0].replace(/^(el|la) /,''),'main'); }));

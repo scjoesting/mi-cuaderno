@@ -8,7 +8,8 @@
 The line list comes from the app itself: headless Chrome opens index.html#spoken-lines,
 which prints spokenLines() (vocab, drills, verb forms, conversations, grammar notes).
 Clip names are an FNV-1a hash of the spoken text, the same as clipName() in the page,
-so only new or changed lines cost credits. Rebuild index.html before running this.
+so only new or changed lines cost credits. audio/voices.json records which voice made
+each clip, so changing VOICES re-records just the lines whose voice changed. Rebuild index.html before running this.
 
 API key: $ELEVENLABS_API_KEY, or the macOS Keychain item "briefing-elevenlabs".
 Python 3.9 built-ins only.
@@ -32,10 +33,13 @@ API = "https://api.elevenlabs.io/v1"
 MODEL = "eleven_multilingual_v2"
 FORMAT = "mp3_44100_64"
 SPEED = 0.9  # a touch slower than natural, for a Spanish 1 ear
+LUMINA = "x5IDPSl4ZUbhosMmVFTk"  # Lumina - Neutral and Clear (Colombian)
+ALEJO = "SsO7anq9lnFq4QW8bfch"   # Alejo - Colombian Costeño (partner voice until 2026-10-10)
 VOICES = {
-    "main": "x5IDPSl4ZUbhosMmVFTk",     # Lumina - Neutral and Clear (Colombian)
-    "partner": "SsO7anq9lnFq4QW8bfch",  # Alejo - Colombian Costeño
+    "main": LUMINA,     # vocab, quizzes, verbs, the learner's replies
+    "partner": LUMINA,  # conversation partners; set to another voice id to give them their own
 }
+MANIFEST = "voices.json"  # audio/voices.json: clip file -> voice id it was recorded with
 KEYCHAIN = "briefing-elevenlabs"
 
 
@@ -104,12 +108,24 @@ def read_lines():
     return lines
 
 
+def save_manifest(path, made):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(dict(sorted(made.items())), f, indent=0)
+
+
 def main():
     args = set(sys.argv[1:])
     os.makedirs(AUDIO, exist_ok=True)
     lines = read_lines()
     have = {f for f in os.listdir(AUDIO) if f.endswith(".mp3")}
-    todo = [ln for ln in lines if ln["file"] not in have]
+    mpath = os.path.join(AUDIO, MANIFEST)
+    try:
+        with open(mpath, encoding="utf-8") as f:
+            made = json.load(f)
+    except (OSError, ValueError):  # clips from before the manifest: main lines Lumina, partner lines Alejo
+        made = {ln["file"]: (ALEJO if ln["voice"] == "partner" else LUMINA) for ln in lines if ln["file"] in have}
+        save_manifest(mpath, made)
+    todo = [ln for ln in lines if ln["file"] not in have or made.get(ln["file"]) != VOICES[ln["voice"]]]
     chars = sum(len(ln["text"]) for ln in todo)
     stale = have - {ln["file"] for ln in lines}
     print("%d lines · %d recorded · %d to record (%s characters ≈ credits) · %d unused clips"
@@ -117,6 +133,8 @@ def main():
     if "--prune" in args:
         for f in stale:
             os.remove(os.path.join(AUDIO, f))
+            made.pop(f, None)
+        save_manifest(mpath, made)
         print("removed %d unused clips" % len(stale))
     if not todo:
         return
@@ -137,6 +155,7 @@ def main():
         with open(path + ".part", "wb") as f:
             f.write(audio)
         os.replace(path + ".part", path)
+        made[ln["file"]] = VOICES[ln["voice"]]
 
     done = failed = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
@@ -150,6 +169,7 @@ def main():
                 print("failed: %r: %s" % (futs[fut]["text"], e))
             if (done + failed) % 100 == 0:
                 print("  %d / %d" % (done + failed, len(todo)))
+    save_manifest(mpath, made)
     print("recorded %d clips%s" % (done, ", %d failed (run again to retry)" % failed if failed else ""))
 
 

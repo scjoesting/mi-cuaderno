@@ -23,7 +23,7 @@ Your progress is saved in the browser you use, so stick with one browser on one 
 | **Grammar drills** | Ten-question drills on one rule each: which pronoun, ser or estar, gusta or gustan, el or la, adjective agreement, telling time. Reachable from Apuntes or the Prueba tab |
 | **Tutor** | Ask Claude anything at a Spanish 1 level, or role-play a conversation in Spanish (claude.ai only) |
 
-Tap the speaker icon on any card to hear it. Every Spanish line is recorded with native Colombian ElevenLabs voices: **Lumina** reads vocab, quizzes, verbs and your replies, and **Alejo** plays the conversation partners. Anything without a recording falls back to the device's Spanish voice.
+Tap the speaker icon on any card to hear it. Every Spanish line is recorded with **Lumina**, a native Colombian ElevenLabs voice, for vocab, quizzes, verbs and both sides of each conversation. Anything without a recording falls back to the device's Spanish voice.
 
 ### Solo audio
 
