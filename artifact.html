@@ -780,7 +780,7 @@ function speakBtn(t,sm){ return canSpeak? '<button class="speak'+(sm?' sm':'')+'
 // Solo audio: the Spanish in questions and answers is hidden until the learner answers or taps Show the words.
 function audioOnly(){ return canSpeak && !!P.settings.audioOnly; }
 function aoHidden(t,lbl){ return `<div class="ao-hidden">${speakBtn(t)}<span class="lbl">${lbl||'Listen…'}</span></div>`; }
-function showWordsBtn(id){ return `<button class="btn ghost" type="button" id="${id}">Show the words</button>`; }
+function showWordsBtn(id,label){ return `<button class="btn ghost" type="button" id="${id}">${label||'Show the words'}</button>`; }
 // A choice the learner hears instead of reads: speaker to replay it, then the button to pick it.
 function aoOption(say,inner){ return `<div class="ao-row">${speakBtn(say)}${inner}</div>`; }
 function renderAoToggle(){ const b=$('#aoToggle'); if(!b) return; b.setAttribute('aria-pressed',String(audioOnly())); b.disabled=!canSpeak; if(!canSpeak) b.title='This browser has no Spanish voice, so Solo audio is unavailable here.'; }
@@ -832,7 +832,7 @@ function go(v){ view=v; try{ localStorage.setItem(KEY+'.view',v); }catch(e){} re
 $('#tabs').addEventListener('click',e=>{ const t=e.target.closest('.tab'); if(t) go(t.dataset.view); });
 $('#aoToggle').addEventListener('click',()=>{ if(!canSpeak) return; P.settings.audioOnly=!P.settings.audioOnly; save();
   // replay the current item's audio under the new mode
-  if(FC){ FC.show=false; FC.said=-1; } if(Q){ Q.show=false; Q.said=-1; } V.show=false; V.said=null; if(C){ C.show=false; C.said=-1; }
+  if(FC){ FC.show=false; FC.said=-1; } if(Q){ Q.show=Q.showO=false; Q.said=-1; } V.show=V.showO=false; V.said=null; if(C){ C.show=C.showR=false; C.said=-1; }
   render(); });
 function renderStreak(){ $('#streakNum').textContent=streak(); }
 function render(){
@@ -1154,11 +1154,11 @@ function renderQuiz(){
   }
   const q=Q.qs[Q.i]; const letters='ABCD';
   // Solo audio hides whatever is Spanish: the prompt (except English cues and clock times) and Spanish choices (not el / la)
-  const hide=audioOnly()&&!Q.show&&Q.answered===null;
+  const aoQ=audioOnly()&&Q.answered===null; const hide=aoQ&&!Q.show; const hideO=aoQ&&!Q.showO; // question and choices reveal separately
   const promptEs=q.type==='es2en'||q.type==='art'||(q.type==='custom'&&!q.en&&!/^\d/.test(q.prompt));
   const optsEs=q.type==='en2es'||q.type==='custom';
   const spoken=quizSpoken(q);
-  const promptHtml=hide&&promptEs? aoHidden(spoken,'Listen to the question…')
+  const promptHtml=hide&&promptEs? aoHidden(spoken,'Listen to the question…')+showWordsBtn('qShow','Show the question')
     : `<div class="prompt" ${(q.type!=='en2es'&&!q.en)?'lang="es"':''}>${esc(q.prompt)}</div>${q.say?speakBtn(q.say):''}`;
   main.innerHTML=`<section class="panel lift">
     <div class="row between"><span class="eyebrow">${esc(Q.title)}</span><span class="sub" style="font-variant-numeric:tabular-nums">${Q.i+1} / ${Q.qs.length} · ${Q.score} right</span></div>
@@ -1166,13 +1166,14 @@ function renderQuiz(){
     <div class="eyebrow">${q.ask}</div>
     <div class="row" style="margin:6px 0 18px">${promptHtml}</div>
     <div class="opts">${q.options.map((o,i)=>{ let cls=''; if(Q.answered!==null){ if(o.c) cls='right'; else if(i===Q.answered) cls='wrong'; }
-      if(hide&&optsEs) return aoOption(o.l,`<button class="opt" data-i="${i}" aria-label="Choice ${letters[i]}"><span class="k">${letters[i]}</span><span class="hid">Choice ${letters[i]}</span></button>`);
+      if(hideO&&optsEs) return aoOption(o.l,`<button class="opt" data-i="${i}" aria-label="Choice ${letters[i]}"><span class="k">${letters[i]}</span><span class="hid">Choice ${letters[i]}</span></button>`);
       return `<button class="opt ${cls}" data-i="${i}" ${Q.answered!==null?'disabled':''}><span class="k">${letters[i]}</span><span ${q.type!=='es2en'?'lang="es"':''}>${esc(o.l)}</span></button>`; }).join('')}</div>
-    ${hide&&(promptEs||optsEs)?`<div class="row" style="margin-top:10px">${optsEs?`<button class="btn" type="button" id="qPlayAll">${SPEAKER} Hear every choice</button>`:''}${showWordsBtn('qShow')}</div>`:''}
+    ${hideO&&optsEs?`<div class="row" style="margin-top:10px"><button class="btn" type="button" id="qPlayAll">${SPEAKER} Hear every choice</button>${showWordsBtn('qShowO','Show the choices')}</div>`:''}
     <div id="qFeed" style="margin-top:14px"></div>
   </section>`;
   main.querySelectorAll('.opt').forEach(b=>b.onclick=()=>answer(+b.dataset.i));
   if($('#qShow')) $('#qShow').onclick=()=>{ Q.show=true; renderQuiz(); };
+  if($('#qShowO')) $('#qShowO').onclick=()=>{ Q.showO=true; renderQuiz(); };
   if($('#qPlayAll')) $('#qPlayAll').onclick=()=>playChoices(q.options.map(o=>o.l));
   if(hide&&Q.said!==Q.i){ Q.said=Q.i; if(promptEs) say(spoken); }
   if(Q.answered!==null){
@@ -1190,7 +1191,7 @@ function renderQuiz(){
     }
     $('#qFeed').innerHTML=`<div class="feedback ${right?'good':'bad'}"><b>${right?'¡Correcto!':'Not quite.'}</b><span class="ink">${right?'':`The answer is <b class="es" lang="es">${esc(q.answer)}</b>. `}${detail}</span>${right?'':explainBox(expl)}</div>
       <div class="row" style="margin-top:12px"><button class="btn primary" id="qNext">${Q.i+1<Q.qs.length?'Siguiente <small>next<span class="khint"> · enter</span></small>':'See my score'}</button></div>`;
-    $('#qNext').onclick=()=>{ Q.i++; Q.answered=null; Q.show=false; renderQuiz(); }; $('#qNext').focus();
+    $('#qNext').onclick=()=>{ Q.i++; Q.answered=null; Q.show=Q.showO=false; renderQuiz(); }; $('#qNext').focus();
   }
 }
 function answer(i){ if(Q.answered!==null) return; const q=Q.qs[Q.i]; Q.answered=i; const right=q.options[i].c; if(right) Q.score++; else q.wrong=true;
@@ -1211,7 +1212,7 @@ function nextVerb(){
   let pi=pick(idx); if(V.cur&&V.cur.v===v&&V.cur.pi===pi) pi=pick(idx.filter(i=>i!==pi));
   // Build options: only real endings (regular) or real forms (irregular) of THIS verb, shuffled
   const opts=shuffle(idx.map(i=>({i, label: v.type==='irr'? conj(v)[i] : '-'+ENDINGS[v.type][i]})));
-  V.cur={v,pi,opts}; V.state='ask'; V.show=false;
+  V.cur={v,pi,opts}; V.state='ask'; V.show=V.showO=false;
 }
 const ENDING_HINTS=['yo always ends in -o, for every regular verb','tú always ends in -s','él / ella / usted is the bare theme vowel: -a for -ar verbs, -e for -er and -ir','nosotros always ends in -mos','vosotros ends in -áis, -éis or -ís (Spain only)','ellos / ellas / ustedes always ends in -n'];
 function optionsBreakdown(v,pi,opts,picked){
@@ -1235,15 +1236,16 @@ function renderVerbs(){
   const {v,pi,opts}=V.cur; const target=conj(v)[pi]; const level=vLevel(); const stem=v.inf.slice(0,-2);
   const acc=V.total?pct(V.right/V.total)+'%':'—';
   let body='';
-  const hide=audioOnly()&&!V.show&&V.state==='ask'; const cue=PRON[pi].split(' / ')[0]+', '+v.inf;
+  const aoV=audioOnly()&&V.state==='ask'; const hide=aoV&&!V.show; const hideO=aoV&&!V.showO; const cue=PRON[pi].split(' / ')[0]+', '+v.inf;
   if(V.state==='ask'){
     const head=`<div class="eyebrow">${level==='build'?'Build the present tense form':'Conjugate in the present tense'}</div>
-      ${hide?`<div class="row" style="margin:6px 0 4px">${aoHidden(cue,'Listen: who, and which verb?')}${showWordsBtn('vShowWords')}</div>`
+      ${hide?`<div class="row" style="margin:6px 0 4px">${aoHidden(cue,'Listen: who, and which verb?')}${showWordsBtn('vShowWords','Show the question')}</div>`
       :`<div class="row" style="margin:6px 0 4px"><div class="prompt" lang="es">${esc(PRON[pi])} <span style="color:var(--muted);font-weight:500">+</span> ${esc(v.inf)}</div></div>
       <p class="sub">${esc(v.inf)} = ${esc(v.en)} · ${esc(PRON_EN[pi])}${v.type==='irr'?' · <b>irregular</b>':' · regular -'+v.type}</p>`}`;
-    if(level==='build'&&hide){
+    if(level==='build'&&aoV&&(hide||hideO)){ // by ear: speaker per form; the forms show only after Show the forms
       body=head+`<p class="sub" style="margin-top:12px">Tap a speaker to hear each form, then pick the one that fits.</p>
-        <div class="chips-lg" style="margin-top:10px">${opts.map((o,k)=>`<span class="ao-chip">${speakBtn(conj(v)[o.i])}<button class="chip-lg" type="button" data-pick="${o.i}" aria-label="Form ${k+1}"><span class="hid">${k+1}</span></button></span>`).join('')}</div>`;
+        <div class="chips-lg" style="margin-top:10px">${opts.map((o,k)=>`<span class="ao-chip">${speakBtn(conj(v)[o.i])}<button class="chip-lg" type="button" data-pick="${o.i}" ${hideO?`aria-label="Form ${k+1}"`:'lang="es"'}>${hideO?`<span class="hid">${k+1}</span>`:esc(conj(v)[o.i])}</button></span>`).join('')}</div>
+        ${hideO?`<div class="row" style="margin-top:10px">${showWordsBtn('vShowO','Show the forms')}</div>`:''}`;
     } else if(level==='build'){
       body=head+(v.type!=='irr'
         ? `<div class="build" lang="es" aria-label="Stem with a blank ending"><span class="stem">${esc(stem)}</span><span class="slot" id="slot">&nbsp;</span></div>
@@ -1288,6 +1290,7 @@ function renderVerbs(){
   if($('#nudgeYes')) $('#nudgeYes').onclick=()=>setVerbLevel('type');
   if($('#nudgeNo')) $('#nudgeNo').onclick=()=>{ V.nudgeHidden=true; renderVerbs(); };
   if($('#vShowWords')) $('#vShowWords').onclick=()=>{ V.show=true; renderVerbs(); };
+  if($('#vShowO')) $('#vShowO').onclick=()=>{ V.showO=true; renderVerbs(); };
   if(V.state==='ask'){
     if(hide&&V.said!==V.cur){ V.said=V.cur; say(cue); }
     if(level==='build'){ main.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>pickVerb(+b.dataset.pick)); }
@@ -1329,14 +1332,14 @@ function renderTalk(){
   const t=C.turns[C.i]; const answered=C.picked!==null; const ao=audioOnly(); const listen=ao||convMode()==='listen'; const letters='ABC';
   const log=C.turns.slice(0,C.i).map(x=>themBubble(x,{en:true})+meBubble(x)).join('');
   const cur=themBubble(t,{hide:listen&&!C.show&&!answered,en:C.en||answered,now:!answered});
-  const tools=answered?'':`<div class="talk-tools">${canSpeak?`<button class="btn" type="button" data-say="${esc(t.p)}">${SPEAKER} Otra vez <small>again</small></button><button class="btn" type="button" id="cSlow">Más despacio <small>slower</small></button>`:''}${listen&&!C.show?'<button class="btn ghost" type="button" id="cShow">Show the words</button>':''}${C.en?'':'<button class="btn ghost" type="button" id="cEn">What does it mean?</button>'}</div>`;
+  const tools=answered?'':`<div class="talk-tools">${canSpeak?`<button class="btn" type="button" data-say="${esc(t.p)}">${SPEAKER} Otra vez <small>again</small></button><button class="btn" type="button" id="cSlow">Más despacio <small>slower</small></button>`:''}${listen&&!C.show?'<button class="btn ghost" type="button" id="cShow">Show the question</button>':''}${C.en?'':'<button class="btn ghost" type="button" id="cEn">What does it mean?</button>'}</div>`;
   let below='';
   if(!answered){
     below=`<div class="eyebrow" style="margin-top:18px">Your reply</div>
-      <div class="opts" style="margin-top:8px;grid-template-columns:1fr">${t.opts.map((o,i)=>ao&&!C.show
+      <div class="opts" style="margin-top:8px;grid-template-columns:1fr">${t.opts.map((o,i)=>ao&&!C.showR
         ? aoOption(o.es,`<button class="opt" data-i="${i}" aria-label="Reply ${letters[i]}"><span class="k">${letters[i]}</span><span class="hid">Reply ${letters[i]}</span></button>`)
         : `<button class="opt" data-i="${i}"><span class="k">${letters[i]}</span><span lang="es">${esc(o.es)}</span></button>`).join('')}</div>
-      ${ao&&!C.show?`<div class="row" style="margin-top:10px"><button class="btn" type="button" id="cPlayAll">${SPEAKER} Hear every reply</button></div>`:''}`;
+      ${ao&&!C.showR?`<div class="row" style="margin-top:10px"><button class="btn" type="button" id="cPlayAll">${SPEAKER} Hear every reply</button>${showWordsBtn('cShowR','Show the replies')}</div>`:''}`;
   } else {
     const o=t.opts[C.picked]; const right=o.c;
     below=`<div class="feedback ${right?'good':'bad'}" style="margin-top:16px"><b>${right?'¡Correcto!':'Not quite.'}</b><span class="ink">${right?esc(o.why):`The reply that fits is <b class="es" lang="es">${esc(t.ans)}</b> (${esc(t.ansEn)}).`}</span></div>
@@ -1354,10 +1357,11 @@ function renderTalk(){
   main.querySelectorAll('.opt').forEach(b=>b.onclick=()=>answerTalk(+b.dataset.i));
   if($('#cSlow')) $('#cSlow').onclick=()=>say(t.p,0.6);
   if($('#cShow')) $('#cShow').onclick=()=>{ C.show=true; renderTalk(); };
+  if($('#cShowR')) $('#cShowR').onclick=()=>{ C.showR=true; renderTalk(); };
   if($('#cEn')) $('#cEn').onclick=()=>{ C.en=true; renderTalk(); };
   if($('#cPlayAll')) $('#cPlayAll').onclick=()=>playChoices(t.opts.map(o=>o.es));
   if($('#micBtn')) $('#micBtn').onclick=()=>listenFor(t.ans);
-  if($('#cNext')){ const nb=$('#cNext'); nb.focus({preventScroll:true}); nb.onclick=()=>{ C.i++; C.picked=null; C.show=false; C.en=false; renderTalk(); }; }
+  if($('#cNext')){ const nb=$('#cNext'); nb.focus({preventScroll:true}); nb.onclick=()=>{ C.i++; C.picked=null; C.show=C.showR=false; C.en=false; renderTalk(); }; }
   else { const nowB=main.querySelector('.msg.now'); if(nowB&&C.i>0) nowB.scrollIntoView({block:'center'}); }
   const bub=main.querySelector('.msg.now[data-say]'); if(bub) bub.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); say(t.p); } };
   // The opening line waits for a tap on the bubble; later lines play as soon as Siguiente brings them up.

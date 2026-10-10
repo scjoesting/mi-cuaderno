@@ -34,7 +34,7 @@ The **Solo audio** button in the header switches the whole app to listening prac
 - **Verbos:** hear the pronoun and verb, then pick the form by ear (Build) or type it (Type).
 - **Conversación:** always runs in Escuchar mode, and the replies are hidden too.
 
-Stuck? **Show the words** reveals that one question. *What does it mean?* still works in Conversación, and everything is shown once you answer. Notes and Tutor are unchanged. The setting is remembered, and it is unavailable in browsers with no Spanish voice.
+Stuck? Each hidden part has its own reveal button, so she can uncover just what she needs: **Show the question**, then **Show the choices** (quiz), **Show the forms** (verbs) or **Show the replies** (conversation). Flashcards have one **Show the words**. *What does it mean?* still works in Conversación, and everything is shown once you answer. Notes and Tutor are unchanged. The setting is remembered, and it is unavailable in browsers with no Spanish voice.
 
 ## Files
 
