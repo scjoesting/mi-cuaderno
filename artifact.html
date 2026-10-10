@@ -99,6 +99,10 @@ main>*,.panel,.row,.stats,.grid{min-width:0}
 .meta{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .unit .row{margin-top:auto}
 .unit .row{flex-wrap:nowrap}
+/* conversation cards: Empezar on its own line, the two study buttons share the next */
+.unit .conv-actions{flex-wrap:wrap;gap:8px}
+.unit .conv-actions [data-conv]{flex-basis:100%}
+.unit .conv-actions .btn{white-space:nowrap}
 .unit .btn{flex:1;padding:8px 10px;font-size:14px}
 select,input[type=text]{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;min-height:44px}
 input[type=text]{font-size:20px;width:100%}
@@ -1417,6 +1421,8 @@ function lessonFor(d){
   const said=[]; d.turns.forEach(t=>said.push([t.p,t.e])); if(d.end) said.push(d.end);
   return {words,verbs,said};
 }
+// Flashcards for just the words one conversation uses; the summary offers the conversation next.
+function lessonCards(id){ const d=DIALOGUES.find(x=>x.id===id); startCards(shuffle(lessonFor(d).words.map(w=>w.id)),'Vocabulario · '+d.title,d.id); }
 function openLesson(id){ stopSpeech(); LS={id}; if(view==='talk') renderTalk(); else go('talk'); window.scrollTo({top:0}); }
 function renderLesson(){
   const d=DIALOGUES.find(x=>x.id===LS.id); const L=lessonFor(d); const resume=C&&C.id===d.id&&C.i<C.turns.length&&(C.i>0||C.picked!==null);
@@ -1429,7 +1435,7 @@ function renderLesson(){
   <section class="panel"><div class="eyebrow">What ${esc(d.who)} says</div><p class="sub" style="margin:4px 0 0">Know what each line means before you answer it.</p><ul class="vlist">${L.said.map(([es,en])=>row(es,en)).join('')}</ul></section>
   <div class="row"><button class="btn ghost" type="button" id="lBack">All conversations</button></div>`;
   if($('#lHear')) $('#lHear').onclick=()=>playChoices(L.words.map(w=>w.es),'#lWords li');
-  if($('#lCards')) $('#lCards').onclick=()=>startCards(L.words.map(w=>w.id),'Vocabulario · '+d.title,d.id);
+  if($('#lCards')) $('#lCards').onclick=()=>lessonCards(d.id);
   $('#lStart').onclick=()=>{ LS=null; if(resume) renderTalk(); else startConv(d.id); };
   $('#lBack').onclick=()=>{ stopSpeech(); LS=null; C=null; renderTalk(); };
 }
@@ -1446,7 +1452,7 @@ function renderTalkPicker(){
       <div><h3 lang="es">${esc(d.title)}</h3><div class="en">${esc(d.en)}</div></div>
       <div class="bar sun" aria-label="Best score ${b?b.best:0}%"><i style="width:${b?b.best:0}%"></i></div>
       <div class="meta"><span>${esc(u?u.name:'')} · with ${esc(d.who)}</span><span>${b?'best '+b.best+'%':'not tried'}</span></div>
-      <div class="row"><button class="btn" data-conv="${d.id}">Empezar <small>start</small></button><button class="btn ghost" data-vocab="${d.id}">Vocabulario <small>learn the words</small></button></div></article>`; }).join('')}</div></section>
+      <div class="row conv-actions"><button class="btn" data-conv="${d.id}">Empezar <small>start</small></button><button class="btn ghost" data-vocab="${d.id}">Vocabulario <small>words</small></button><button class="btn ghost" data-vcards="${d.id}">Tarjetas <small>flashcards</small></button></div></article>`; }).join('')}</div></section>
   ${sampleFn?`<section class="panel"><div class="eyebrow">Role-play with Claude</div><h2 class="h3">Have a real conversation</h2>
     <p class="sub" style="margin:4px 0 12px;max-width:62ch">Claude plays the other person and only speaks Spanish. Type your replies. If you make a mistake, you get a short tip in English and the conversation keeps going.</p>
     <div class="chips">${DIALOGUES.map(d=>`<button class="chip" type="button" data-role="${d.id}">${esc(d.en)}</button>`).join('')}</div></section>`:''}`;
@@ -1454,6 +1460,7 @@ function renderTalkPicker(){
   $('#cQuick').onclick=startQuick;
   main.querySelectorAll('[data-conv]').forEach(b=>b.onclick=()=>startConv(b.dataset.conv));
   main.querySelectorAll('[data-vocab]').forEach(b=>b.onclick=()=>openLesson(b.dataset.vocab));
+  main.querySelectorAll('[data-vcards]').forEach(b=>b.onclick=()=>lessonCards(b.dataset.vcards));
   main.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>startRoleplay(b.dataset.role));
 }
 document.addEventListener('keydown',e=>{ if(view!=='talk'||!C||C.i>=C.turns.length||C.picked!==null) return; if(e.target.matches('input,select,textarea')) return; const k=e.key.toUpperCase(); let i='ABC'.indexOf(k); if(i<0&&['1','2','3'].includes(e.key)) i=+e.key-1; if(i>=0&&i<C.turns[C.i].opts.length) answerTalk(i); });
