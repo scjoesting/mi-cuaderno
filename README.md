@@ -23,7 +23,7 @@ Your progress is saved in the browser you use, so stick with one browser on one 
 | **Grammar drills** | Ten-question drills on one rule each: which pronoun, ser or estar, gusta or gustan, el or la, adjective agreement, telling time. Reachable from Apuntes or the Prueba tab |
 | **Tutor** | Ask Claude anything at a Spanish 1 level, or role-play a conversation in Spanish (claude.ai only) |
 
-Tap the speaker icon on any card to hear it pronounced with your device's Spanish voice.
+Tap the speaker icon on any card to hear it. Every Spanish line is recorded with native Colombian ElevenLabs voices: **Lumina** reads vocab, quizzes, verbs and your replies, and **Alejo** plays the conversation partners. Anything without a recording falls back to the device's Spanish voice.
 
 ### Solo audio
 
@@ -40,7 +40,19 @@ Stuck? **Show the words** reveals that one question. *What does it mean?* still 
 
 - `artifact.html` — the page source (published to claude.ai)
 - `index.html` — the same page wrapped so it opens directly in a browser. This is what GitHub Pages serves.
+- `audio/` — the recorded clips. `tools/gen_audio.py` makes them.
 
 ## Editing the word lists
 
 Open `artifact.html`, find `const UNITS`, and add rows in the form `['spanish', 'english', 'm' | 'f' | '']`. Add a unit by copying one of the unit blocks. Then rebuild `index.html` by copying the file and adding the `<!DOCTYPE html>` wrapper, or just open `artifact.html` directly (it works too, with a plainer default page setup).
+
+## Recording audio for new lines
+
+After adding words or conversations, rebuild `index.html`, then:
+
+```
+python3 tools/gen_audio.py          # shows how many lines are missing audio and the credit cost
+python3 tools/gen_audio.py --yes    # records them into audio/
+```
+
+Clips are named by a hash of the text, so only new or changed lines are recorded. `--prune` deletes clips nothing uses anymore. The script needs Google Chrome and an ElevenLabs API key (from `ELEVENLABS_API_KEY` or the Keychain item `briefing-elevenlabs`).

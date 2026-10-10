@@ -748,13 +748,27 @@ const THUMB_UP='<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stro
 const THUMB_DOWN='<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 13V4h3a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-3z"/><path d="M17 13l-4 8a2 2 0 0 1-2-2v-4H6a2 2 0 0 1-2-2.3l1.2-6A2 2 0 0 1 7.2 4H17"/></svg>';
 function genderTag(g){ return g==='m'?'<span class="tag m">el · masculine</span>':g==='f'?'<span class="tag f">la · feminine</span>':''; }
 
-// Pronunciation through the browser's Spanish voice
-const canSpeak='speechSynthesis' in window; let esVoice=null;
+// Pronunciation: recorded ElevenLabs clips (Lumina; Alejo for conversation partners) in audio/,
+// named by a hash of the spoken text. Anything without a clip falls back to the browser's Spanish voice.
+const hasTTS='speechSynthesis' in window; const canSpeak=hasTTS||typeof Audio!=='undefined'; let esVoice=null;
 function pickVoice(){ try{ const vs=speechSynthesis.getVoices(); esVoice=vs.find(v=>/^es[-_](MX|US|419)/i.test(v.lang))||vs.find(v=>/^es/i.test(v.lang))||null; }catch(e){} }
-if(canSpeak){ pickVoice(); try{ speechSynthesis.onvoiceschanged=pickVoice; }catch(e){} }
-function utter(t,rate){ const u=new SpeechSynthesisUtterance(t.replace(/\s*\(.*?\)\s*/g,' ').replace(/…/g,'')); u.lang=esVoice?esVoice.lang:'es-ES'; if(esVoice) u.voice=esVoice; u.rate=rate||0.85; return u; }
-function say(t,rate){ if(!canSpeak) return; try{ speechSynthesis.cancel(); speechSynthesis.speak(utter(t,rate)); }catch(e){} }
-function sayAll(lines){ if(!canSpeak) return; try{ speechSynthesis.cancel(); lines.forEach(t=>speechSynthesis.speak(utter(t))); }catch(e){} }
+if(hasTTS){ pickVoice(); try{ speechSynthesis.onvoiceschanged=pickVoice; }catch(e){} }
+const AUDIO_BASE=(location.protocol==='file:'||/(^|\.)github\.io$|^localhost$|^127\./.test(location.hostname))?'audio/':'https://scjoesting.github.io/mi-cuaderno/audio/';
+function speechText(t){ return String(t).normalize('NFC').replace(/\s*\(.*?\)\s*/g,' ').replace(/…/g,'').replace(/\s+/g,' ').trim(); }
+function clipName(t){ const b=new TextEncoder().encode(speechText(t)); let h=0x811c9dc5; for(const x of b){ h^=x; h=Math.imul(h,0x01000193)>>>0; } return h.toString(16).padStart(8,'0'); } // FNV-1a, same as tools/gen_audio.py
+function utter(t,rate){ const u=new SpeechSynthesisUtterance(speechText(t)); u.lang=esVoice?esVoice.lang:'es-ES'; if(esVoice) u.voice=esVoice; u.rate=rate||0.85; return u; }
+const player=typeof Audio!=='undefined'?new Audio():null; let playSeq=0;
+function stopSpeech(){ playSeq++; if(player){ try{ player.pause(); }catch(e){} } if(hasTTS){ try{ speechSynthesis.cancel(); }catch(e){} } }
+// Play one line, then call done. A missing clip falls back to the browser voice.
+function playOne(t,rate,seq,done){
+  let fell=false; const fallback=()=>{ if(fell||seq!==playSeq) return; fell=true; if(!hasTTS){ done&&done(); return; } try{ const u=utter(t,rate); u.onend=()=>{ if(seq===playSeq&&done) done(); }; speechSynthesis.speak(u); }catch(e){ done&&done(); } };
+  if(!player) return fallback();
+  player.onended=()=>{ if(seq===playSeq&&done) done(); }; player.onerror=fallback;
+  player.src=AUDIO_BASE+clipName(t)+'.mp3'; player.playbackRate=rate&&rate<0.8?0.75:1; player.preservesPitch=true;
+  const p=player.play(); if(p&&p.catch) p.catch(err=>{ if(err&&err.name!=='AbortError') fallback(); });
+}
+function say(t,rate){ if(!canSpeak) return; stopSpeech(); playOne(t,rate,playSeq); }
+function sayAll(lines){ if(!canSpeak) return; stopSpeech(); const seq=playSeq; let i=0; const next=()=>{ if(seq!==playSeq||i>=lines.length) return; const t=lines[i++]; playOne(t,0,seq,()=>setTimeout(next,350)); }; next(); }
 function speakBtn(t,sm){ return canSpeak? '<button class="speak'+(sm?' sm':'')+'" type="button" data-say="'+esc(t)+'" aria-label="Hear it in Spanish" title="Hear it">'+SPEAKER+'</button>' : ''; }
 // Solo audio: the Spanish in questions and answers is hidden until the learner answers or taps Show the words.
 function audioOnly(){ return canSpeak && !!P.settings.audioOnly; }
@@ -1097,6 +1111,8 @@ function makeQuestion(x,pool){
   if(t==='es2en'){ const opts=shuffle([{l:en,c:true},...others.map(o=>({l:o.c[1],c:false}))]); return {type:t,x,prompt:es,ask:'What does this mean?',options:opts,answer:en,say:es}; }
   const opts=shuffle([{l:es,c:true},...others.map(o=>({l:o.c[0],c:false}))]); return {type:t,x,prompt:en,ask:'How do you say this in Spanish?',options:opts,answer:es};
 }
+// What Solo audio says for a hidden quiz prompt: the blank becomes a pause, the (hint) is read after it.
+function quizSpoken(q){ return q.say||q.prompt.replace(/_+/g,', ,').replace(/\s*\((.+?)\)\s*$/,'. $1'); }
 function startQuiz(unitId){
   let pool=[]; let title='';
   if(unitId==='studied'){ UNITS.forEach(u=>u.cards.forEach((c,i)=>{ const id=cardId(u,i); if(prog(id).s>0) pool.push({id,u,c}); })); title='Everything I have studied'; }
@@ -1134,7 +1150,7 @@ function renderQuiz(){
   const hide=audioOnly()&&!Q.show&&Q.answered===null;
   const promptEs=q.type==='es2en'||q.type==='art'||(q.type==='custom'&&!q.en&&!/^\d/.test(q.prompt));
   const optsEs=q.type==='en2es'||q.type==='custom';
-  const spoken=q.say||q.prompt.replace(/_+/g,', ,').replace(/\s*\((.+?)\)\s*$/,'. $1');
+  const spoken=quizSpoken(q);
   const promptHtml=hide&&promptEs? aoHidden(spoken,'Listen to the question…')
     : `<div class="prompt" ${(q.type!=='en2es'&&!q.en)?'lang="es"':''}>${esc(q.prompt)}</div>${q.say?speakBtn(q.say):''}`;
   main.innerHTML=`<section class="panel lift">
@@ -1150,7 +1166,7 @@ function renderQuiz(){
   </section>`;
   main.querySelectorAll('.opt').forEach(b=>b.onclick=()=>answer(+b.dataset.i));
   if($('#qShow')) $('#qShow').onclick=()=>{ Q.show=true; renderQuiz(); };
-  if($('#qPlayAll')) $('#qPlayAll').onclick=()=>sayAll(q.options.map((o,i)=>letters[i]+'. '+o.l));
+  if($('#qPlayAll')) $('#qPlayAll').onclick=()=>sayAll(q.options.map(o=>o.l));
   if(hide&&Q.said!==Q.i){ Q.said=Q.i; if(promptEs) say(spoken); }
   if(Q.answered!==null){
     const o=q.options[Q.answered]; const right=o.c;
@@ -1332,7 +1348,7 @@ function renderTalk(){
   if($('#cSlow')) $('#cSlow').onclick=()=>say(t.p,0.6);
   if($('#cShow')) $('#cShow').onclick=()=>{ C.show=true; renderTalk(); };
   if($('#cEn')) $('#cEn').onclick=()=>{ C.en=true; renderTalk(); };
-  if($('#cPlayAll')) $('#cPlayAll').onclick=()=>sayAll(t.opts.map((o,i)=>letters[i]+'. '+o.es));
+  if($('#cPlayAll')) $('#cPlayAll').onclick=()=>sayAll(t.opts.map(o=>o.es));
   if($('#micBtn')) $('#micBtn').onclick=()=>listenFor(t.ans);
   if($('#cNext')){ const nb=$('#cNext'); nb.focus({preventScroll:true}); nb.onclick=()=>{ C.i++; C.picked=null; C.show=false; C.en=false; renderTalk(); }; }
   else { const nowB=main.querySelector('.msg.now'); if(nowB&&C.i>0) nowB.scrollIntoView({block:'center'}); }
@@ -1350,7 +1366,7 @@ function renderTalkDone(){
     <p class="tip" style="margin-top:16px">Read it out loud as both people. Then try it with a friend or a parent: one of you plays ${C.d?esc(C.d.who):'the asker'}, the other plays you.</p></section>`;
   if($('#cPlay')) $('#cPlay').onclick=()=>sayAll(lines);
   $('#cAgain').onclick=()=>C.id==='quick'?startQuick():startConv(C.id);
-  $('#cOther').onclick=()=>{ if(canSpeak) speechSynthesis.cancel(); C=null; renderTalk(); };
+  $('#cOther').onclick=()=>{ stopSpeech(); C=null; renderTalk(); };
   if($('#cRole')) $('#cRole').onclick=()=>startRoleplay(C.d.id);
 }
 function renderTalkPicker(){
@@ -1535,8 +1551,22 @@ async function ask(q){
   T.busy=false; T.ctl=null; if(text) T.turns.push({role:'assistant',content:text}); renderTutor();
 }
 
+/* ============================ AUDIO CLIP LIST ============================ */
+// Every line the app can speak, for tools/gen_audio.py. voice 'partner' = conversation partner (Alejo), 'main' = everything else (Lumina).
+function spokenLines(){
+  const M=new Map(); const add=(t,voice)=>{ const k=speechText(t||''); if(!k) return; const o=M.get(k); if(!o) M.set(k,voice); else if(o!==voice) M.set(k,'main'); };
+  UNITS.forEach(u=>u.cards.forEach(c=>{ add(c[0],'main'); if(/^(el|la) [^\/]+$/.test(c[0])) add(c[0].replace(/^(el|la) /,''),'main'); }));
+  for(let n=0;n<300;n++) Object.entries(DRILLS).forEach(([k,d])=>{ if(k==='articles') return; d.build().forEach(q=>{ if(!q.en&&!/^\d/.test(q.prompt)) add(quizSpoken(q),'main'); q.options.forEach(o=>add(o.l,'main')); if(q.full) add(q.full,'main'); }); });
+  VERBS.forEach(v=>{ const f=conj(v); PRON.forEach((pr,i)=>{ const p0=pr.split(' / ')[0]; add(p0+', '+v.inf,'main'); add(f[i],'main'); add(p0+' '+f[i],'main'); }); });
+  DIALOGUES.forEach(d=>{ d.turns.forEach(t=>{ add(t.p,'partner'); if(Array.isArray(t.q)) add(t.q[0],'partner'); t.r.forEach(r=>add(r[0],'main')); }); if(d.end) add(d.end[0],'partner'); });
+  const v0=view; renderNotes(); main.querySelectorAll('[data-say]').forEach(e=>add(e.getAttribute('data-say'),'main')); view=v0; render();
+  return [...M.entries()].map(([text,voice])=>({text,voice,file:clipName(text)+'.mp3'}));
+}
+
 /* ============================ BOOT ============================ */
 // Outside the claude.ai viewer there is no tutor, so hide that tab entirely.
 if(!(window.claude&&typeof window.claude.use==='function')){ const tt=document.querySelector('.tab[data-view="tutor"]'); if(tt) tt.hidden=true; if(view==='tutor') view='home'; }
-render();
+// tools/gen_audio.py opens index.html#spoken-lines in headless Chrome to read the clip list
+if(location.hash==='#spoken-lines'){ const L=spokenLines(); document.body.innerHTML='<pre id="spoken-lines">'+esc(JSON.stringify(L))+'</pre>'; }
+else render();
 </script>
