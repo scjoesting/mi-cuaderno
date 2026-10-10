@@ -836,7 +836,10 @@ try{ view=localStorage.getItem(KEY+'.view')||'home'; }catch(e){}
 if(!['home','cards','quiz','verbs','talk','notes','tutor'].includes(view)) view='home';
 const main=$('#main');
 function go(v){ view=v; try{ localStorage.setItem(KEY+'.view',v); }catch(e){} render(); window.scrollTo({top:0}); }
-$('#tabs').addEventListener('click',e=>{ const t=e.target.closest('.tab'); if(t) go(t.dataset.view); });
+// A tab always opens that section's home: any flashcard set, quiz, conversation or lesson in progress is closed.
+$('#tabs').addEventListener('click',e=>{ const t=e.target.closest('.tab'); if(!t) return; stopSpeech();
+  ({cards:()=>{ FC=null; },quiz:()=>{ Q=null; },talk:()=>{ C=null; LS=null; }}[t.dataset.view]||(()=>{}))();
+  go(t.dataset.view); });
 $('#aoToggle').addEventListener('click',()=>{ if(!canSpeak) return; P.settings.audioOnly=!P.settings.audioOnly; save();
   // replay the current item's audio under the new mode
   if(FC){ FC.show=false; FC.said=-1; } if(Q){ Q.show=Q.showO=false; Q.said=-1; } V.show=V.showO=false; V.said=null; if(C){ C.show=C.showR=false; C.said=-1; }
