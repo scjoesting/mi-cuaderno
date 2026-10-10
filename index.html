@@ -1173,9 +1173,9 @@ function renderQuiz(){
     <div class="eyebrow">${q.ask}</div>
     <div class="row" style="margin:6px 0 18px">${promptHtml}</div>
     <div class="opts">${q.options.map((o,i)=>{ let cls=''; if(Q.answered!==null){ if(o.c) cls='right'; else if(i===Q.answered) cls='wrong'; }
-      if(hideO&&optsEs) return aoOption(o.l,`<button class="opt" data-i="${i}" aria-label="Choice ${letters[i]}"><span class="k">${letters[i]}</span><span class="hid">Choice ${letters[i]}</span></button>`);
+      if(aoQ&&optsEs) return aoOption(o.l,`<button class="opt" data-i="${i}" ${hideO?`aria-label="Choice ${letters[i]}"`:''}><span class="k">${letters[i]}</span>${hideO?`<span class="hid">Choice ${letters[i]}</span>`:`<span lang="es">${esc(o.l)}</span>`}</button>`);
       return `<button class="opt ${cls}" data-i="${i}" ${Q.answered!==null?'disabled':''}><span class="k">${letters[i]}</span><span ${q.type!=='es2en'?'lang="es"':''}>${esc(o.l)}</span></button>`; }).join('')}</div>
-    ${hideO&&optsEs?`<div class="row" style="margin-top:10px"><button class="btn" type="button" id="qPlayAll">${SPEAKER} Hear every choice</button>${showWordsBtn('qShowO','Show the choices')}</div>`:''}
+    ${aoQ&&optsEs?`<div class="row" style="margin-top:10px"><button class="btn" type="button" id="qPlayAll">${SPEAKER} Hear every choice</button>${hideO?showWordsBtn('qShowO','Show the choices'):''}</div>`:''}
     <div id="qFeed" style="margin-top:14px"></div>
   </section>`;
   main.querySelectorAll('.opt').forEach(b=>b.onclick=()=>answer(+b.dataset.i));
@@ -1249,7 +1249,7 @@ function renderVerbs(){
       ${hide?`<div class="row" style="margin:6px 0 4px">${aoHidden(cue,'Listen: who, and which verb?')}${showWordsBtn('vShowWords','Show the question')}</div>`
       :`<div class="row" style="margin:6px 0 4px"><div class="prompt" lang="es">${esc(PRON[pi])} <span style="color:var(--muted);font-weight:500">+</span> ${esc(v.inf)}</div></div>
       <p class="sub">${esc(v.inf)} = ${esc(v.en)} · ${esc(PRON_EN[pi])}${v.type==='irr'?' · <b>irregular</b>':' · regular -'+v.type}</p>`}`;
-    if(level==='build'&&aoV&&(hide||hideO)){ // by ear: speaker per form; the forms show only after Show the forms
+    if(level==='build'&&aoV){ // by ear: speaker per form; the forms show only after Show the forms
       body=head+`<p class="sub" style="margin-top:12px">Tap a speaker to hear each form, then pick the one that fits.</p>
         <div class="chips-lg" style="margin-top:10px">${opts.map((o,k)=>`<span class="ao-chip">${speakBtn(conj(v)[o.i])}<button class="chip-lg" type="button" data-pick="${o.i}" ${hideO?`aria-label="Form ${k+1}"`:'lang="es"'}>${hideO?`<span class="hid">${k+1}</span>`:esc(conj(v)[o.i])}</button></span>`).join('')}</div>
         ${hideO?`<div class="row" style="margin-top:10px">${showWordsBtn('vShowO','Show the forms')}</div>`:''}`;
@@ -1343,10 +1343,10 @@ function renderTalk(){
   let below='';
   if(!answered){
     below=`<div class="eyebrow" style="margin-top:18px">Your reply</div>
-      <div class="opts" style="margin-top:8px;grid-template-columns:1fr">${t.opts.map((o,i)=>ao&&!C.showR
-        ? aoOption(o.es,`<button class="opt" data-i="${i}" aria-label="Reply ${letters[i]}"><span class="k">${letters[i]}</span><span class="hid">Reply ${letters[i]}</span></button>`)
+      <div class="opts" style="margin-top:8px;grid-template-columns:1fr">${t.opts.map((o,i)=>ao
+        ? aoOption(o.es,`<button class="opt" data-i="${i}" ${C.showR?'':`aria-label="Reply ${letters[i]}"`}><span class="k">${letters[i]}</span>${C.showR?`<span lang="es">${esc(o.es)}</span>`:`<span class="hid">Reply ${letters[i]}</span>`}</button>`)
         : `<button class="opt" data-i="${i}"><span class="k">${letters[i]}</span><span lang="es">${esc(o.es)}</span></button>`).join('')}</div>
-      ${ao&&!C.showR?`<div class="row" style="margin-top:10px"><button class="btn" type="button" id="cPlayAll">${SPEAKER} Hear every reply</button>${showWordsBtn('cShowR','Show the replies')}</div>`:''}`;
+      ${ao?`<div class="row" style="margin-top:10px"><button class="btn" type="button" id="cPlayAll">${SPEAKER} Hear every reply</button>${C.showR?'':showWordsBtn('cShowR','Show the replies')}</div>`:''}`;
   } else {
     const o=t.opts[C.picked]; const right=o.c;
     below=`<div class="feedback ${right?'good':'bad'}" style="margin-top:16px"><b>${right?'¡Correcto!':'Not quite.'}</b><span class="ink">${right?esc(o.why):`The reply that fits is <b class="es" lang="es">${esc(t.ans)}</b> (${esc(t.ansEn)}).`}</span></div>
