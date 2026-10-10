@@ -232,6 +232,11 @@ details ul{margin:0;padding-left:20px}
 .ao-row{display:flex;gap:8px;align-items:stretch}
 .ao-row .speak{flex:none;align-self:center}
 .ao-row .opt{flex:1}
+.ao-row.playing .opt{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent)}
+.ao-row.playing .opt .hid{color:var(--accent);font-weight:700}
+.ao-row.playing .speak{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.msg.now[data-say]{cursor:pointer}
+.msg.now[data-say]:hover{background:var(--accent-soft)}
 .opt .hid,.chip-lg .hid{font-style:italic;color:var(--muted);font-weight:400}
 .ao-chip{display:inline-flex;gap:6px;align-items:center;flex:1 1 30%}
 .ao-chip .chip-lg{flex:1}
@@ -758,7 +763,7 @@ function speechText(t){ return String(t).normalize('NFC').replace(/\s*\(.*?\)\s*
 function clipName(t){ const b=new TextEncoder().encode(speechText(t)); let h=0x811c9dc5; for(const x of b){ h^=x; h=Math.imul(h,0x01000193)>>>0; } return h.toString(16).padStart(8,'0'); } // FNV-1a, same as tools/gen_audio.py
 function utter(t,rate){ const u=new SpeechSynthesisUtterance(speechText(t)); u.lang=esVoice?esVoice.lang:'es-ES'; if(esVoice) u.voice=esVoice; u.rate=rate||0.85; return u; }
 const player=typeof Audio!=='undefined'?new Audio():null; let playSeq=0;
-function stopSpeech(){ playSeq++; if(player){ try{ player.pause(); }catch(e){} } if(hasTTS){ try{ speechSynthesis.cancel(); }catch(e){} } }
+function stopSpeech(){ playSeq++; document.querySelectorAll('.playing').forEach(el=>el.classList.remove('playing')); if(player){ try{ player.pause(); }catch(e){} } if(hasTTS){ try{ speechSynthesis.cancel(); }catch(e){} } }
 // Play one line, then call done. A missing clip falls back to the browser voice.
 function playOne(t,rate,seq,done){
   let fell=false; const fallback=()=>{ if(fell||seq!==playSeq) return; fell=true; if(!hasTTS){ done&&done(); return; } try{ const u=utter(t,rate); u.onend=()=>{ if(seq===playSeq&&done) done(); }; speechSynthesis.speak(u); }catch(e){ done&&done(); } };
@@ -768,7 +773,9 @@ function playOne(t,rate,seq,done){
   const p=player.play(); if(p&&p.catch) p.catch(err=>{ if(err&&err.name!=='AbortError') fallback(); });
 }
 function say(t,rate){ if(!canSpeak) return; stopSpeech(); playOne(t,rate,playSeq); }
-function sayAll(lines){ if(!canSpeak) return; stopSpeech(); const seq=playSeq; let i=0; const next=()=>{ if(seq!==playSeq||i>=lines.length) return; const t=lines[i++]; playOne(t,0,seq,()=>setTimeout(next,350)); }; next(); }
+function sayAll(lines,onLine){ if(!canSpeak) return; stopSpeech(); const seq=playSeq; let i=0; const next=()=>{ if(seq!==playSeq) return; if(i>=lines.length){ onLine&&onLine(-1); return; } onLine&&onLine(i); const t=lines[i++]; playOne(t,0,seq,()=>setTimeout(next,350)); }; next(); }
+// Play every choice in order, lighting up the row being read.
+function playChoices(lines){ const rows=main.querySelectorAll('.ao-row'); sayAll(lines,i=>rows.forEach((r,k)=>r.classList.toggle('playing',k===i))); }
 function speakBtn(t,sm){ return canSpeak? '<button class="speak'+(sm?' sm':'')+'" type="button" data-say="'+esc(t)+'" aria-label="Hear it in Spanish" title="Hear it">'+SPEAKER+'</button>' : ''; }
 // Solo audio: the Spanish in questions and answers is hidden until the learner answers or taps Show the words.
 function audioOnly(){ return canSpeak && !!P.settings.audioOnly; }
@@ -1166,7 +1173,7 @@ function renderQuiz(){
   </section>`;
   main.querySelectorAll('.opt').forEach(b=>b.onclick=()=>answer(+b.dataset.i));
   if($('#qShow')) $('#qShow').onclick=()=>{ Q.show=true; renderQuiz(); };
-  if($('#qPlayAll')) $('#qPlayAll').onclick=()=>sayAll(q.options.map(o=>o.l));
+  if($('#qPlayAll')) $('#qPlayAll').onclick=()=>playChoices(q.options.map(o=>o.l));
   if(hide&&Q.said!==Q.i){ Q.said=Q.i; if(promptEs) say(spoken); }
   if(Q.answered!==null){
     const o=q.options[Q.answered]; const right=o.c;
@@ -1314,7 +1321,7 @@ function prepTurn(t,quick,who){ const alt=quick&&Array.isArray(t.q); return {p:a
 function newConv(id,title,d,turns){ C={id,title,d,turns,i:0,picked:null,score:0,said:-1,show:false,en:false,saved:false}; go('talk'); }
 function startConv(id){ const d=DIALOGUES.find(x=>x.id===id); newConv(id,d.title,d,d.turns.map(t=>prepTurn(t,false,d.who))); }
 function startQuick(){ const pool=[]; DIALOGUES.forEach(d=>d.turns.forEach(t=>{ if(t.q) pool.push(prepTurn(t,true,d.who)); })); newConv('quick','Preguntas rápidas',null,shuffle(pool).slice(0,10)); }
-function themBubble(t,{hide,en,now}={}){ return `<div class="msg ai${now?' now':''}"><span class="who">${esc(t.who)}</span>${hide?'<span class="hid">Listen, then pick your reply.</span>':`<span class="line" lang="es">${esc(t.p)}</span>`}${speakBtn(t.p,true)}${en?`<span class="tr">${esc(t.e)}</span>`:''}</div>`; }
+function themBubble(t,{hide,en,now}={}){ return `<div class="msg ai${now?' now':''}"${now&&canSpeak?` data-say="${esc(t.p)}" role="button" tabindex="0" aria-label="Play ${esc(t.who)}'s line"`:''}><span class="who">${esc(t.who)}</span>${hide?'<span class="hid">Tap to listen, then pick your reply.</span>':`<span class="line" lang="es">${esc(t.p)}</span>`}${speakBtn(t.p,true)}${en?`<span class="tr">${esc(t.e)}</span>`:''}</div>`; }
 function meBubble(t){ return `<div class="msg me"><span class="who">Tú</span><span class="line" lang="es">${esc(t.ans)}</span>${speakBtn(t.ans,true)}</div>`; }
 function renderTalk(){
   if(!C) return renderTalkPicker();
@@ -1348,11 +1355,13 @@ function renderTalk(){
   if($('#cSlow')) $('#cSlow').onclick=()=>say(t.p,0.6);
   if($('#cShow')) $('#cShow').onclick=()=>{ C.show=true; renderTalk(); };
   if($('#cEn')) $('#cEn').onclick=()=>{ C.en=true; renderTalk(); };
-  if($('#cPlayAll')) $('#cPlayAll').onclick=()=>sayAll(t.opts.map(o=>o.es));
+  if($('#cPlayAll')) $('#cPlayAll').onclick=()=>playChoices(t.opts.map(o=>o.es));
   if($('#micBtn')) $('#micBtn').onclick=()=>listenFor(t.ans);
   if($('#cNext')){ const nb=$('#cNext'); nb.focus({preventScroll:true}); nb.onclick=()=>{ C.i++; C.picked=null; C.show=false; C.en=false; renderTalk(); }; }
   else { const nowB=main.querySelector('.msg.now'); if(nowB&&C.i>0) nowB.scrollIntoView({block:'center'}); }
-  if(C.said!==C.i&&!answered){ C.said=C.i; say(t.p); }
+  const bub=main.querySelector('.msg.now[data-say]'); if(bub) bub.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); say(t.p); } };
+  // The opening line waits for a tap on the bubble; later lines play as soon as Siguiente brings them up.
+  if(C.said!==C.i&&!answered){ C.said=C.i; if(C.i>0) say(t.p); }
 }
 function answerTalk(i){ if(!C||C.picked!==null) return; const t=C.turns[C.i]; C.picked=i; if(t.opts[i].c) C.score++; markStudied(); say(t.ans); renderTalk(); }
 function renderTalkDone(){
