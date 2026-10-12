@@ -237,6 +237,7 @@ details ul{margin:0;padding-left:20px}
 .mic-box{display:flex;flex-direction:column;gap:6px;margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--surface-2)}
 .mic-out.good{color:var(--good);font-weight:700}
 .mic-out.warn{color:var(--warn);font-weight:700}
+.mic-out.bad{color:var(--bad)}
 /* Solo audio: Spanish stays hidden until the learner answers or taps Show the words */
 .ao-hidden{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .ao-hidden .lbl{font-style:italic;color:var(--muted);font-size:17px}
@@ -1337,22 +1338,39 @@ let LS=null; // vocabulary lesson for one conversation: {id}
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition||null;
 const MIC='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>';
 function convMode(){ return P.settings.convMode||'read'; }
-function prepTurn(t,quick,who){ const alt=quick&&Array.isArray(t.q); return {p:alt?t.q[0]:t.p, e:alt?t.q[1]:t.e, who, ans:t.r[0][0], ansEn:t.r[0][1], opts:shuffle(t.r.map((o,k)=>({es:o[0],en:o[1],why:o[2],c:k===0})))}; }
-function newConv(id,title,d,turns){ LS=null; C={id,title,d,turns,i:0,picked:null,score:0,said:-1,show:false,en:false,saved:false}; go('talk'); }
+// The mode in effect: 'speak' needs speech recognition, and Solo audio never shows the partner's words up front.
+function talkMode(){ let m=convMode(); if(m==='speak'&&!SR) m='read'; if(m==='read'&&audioOnly()) m='listen'; return m; }
+// acc: every reply that fits ([es,en], the main one first). say: what speech is matched against. A reply like
+// "Me llamo Alex. ¿Y tú?" also counts without its question tail, so its first sentence is a target of its own.
+// free: the kinds of word (number, month, day) she can swap for her own, unless a wrong reply turns on that word.
+function prepTurn(t,quick,who){ const alt=quick&&Array.isArray(t.q); const acc=[[t.r[0][0],t.r[0][1]],...(t.x||[])];
+  const right=new Set(norm(t.r[0][0]).split(' ')); const free=SLOTS.filter(R=>!t.r.slice(1).some(o=>norm(o[0]).split(' ').some(w=>R.test(w)&&!right.has(w))));
+  const targets=[]; acc.forEach(a=>{ targets.push({say:a[0],a,free}); const s=a[0].split(/(?<=[.!])\s+/)[0]; if(s!==a[0]&&!/\?/.test(s)&&s.split(' ').length>1) targets.push({say:s,a,free}); });
+  return {p:alt?t.q[0]:t.p, e:alt?t.q[1]:t.e, who, ans:t.r[0][0], ansEn:t.r[0][1], acc, targets, free, opts:shuffle(t.r.map((o,k)=>({es:o[0],en:o[1],why:o[2],c:k===0})))}; }
+function newConv(id,title,d,turns){ LS=null; C={id,title,d,turns,i:0,picked:null,score:0,said:-1,show:false,en:false,chose:false,heard:null,saved:false}; go('talk'); }
 function startConv(id){ const d=DIALOGUES.find(x=>x.id===id); newConv(id,d.title,d,d.turns.map(t=>prepTurn(t,false,d.who))); }
 function startQuick(){ const pool=[]; DIALOGUES.forEach(d=>d.turns.forEach(t=>{ if(t.q) pool.push(prepTurn(t,true,d.who)); })); newConv('quick','Preguntas rápidas',null,shuffle(pool).slice(0,10)); }
 function themBubble(t,{hide,en,now}={}){ return `<div class="msg ai${now?' now':''}"${now&&canSpeak?` data-say="${esc(t.p)}" role="button" tabindex="0" aria-label="Play ${esc(t.who)}'s line"`:''}><span class="who">${esc(t.who)}</span>${hide?'<span class="hid">Tap to listen, then pick your reply.</span>':`<span class="line" lang="es">${esc(t.p)}</span>`}${speakBtn(t.p,true)}${en?`<span class="tr">${esc(t.e)}</span>`:''}</div>`; }
-function meBubble(t){ return `<div class="msg me"><span class="who">Tú</span><span class="line" lang="es">${esc(t.ans)}</span>${speakBtn(t.ans,true)}</div>`; }
+function meBubble(t){ const es=t.mine?t.mine[0]:t.ans; return `<div class="msg me"><span class="who">Tú</span><span class="line" lang="es">${esc(es)}</span>${speakBtn(es,true)}</div>`; }
+// Every reply that fits, with the one she said marked.
+// An English gloss in quotes, ending the sentence: “My name is Alex.” → “My name is Alex”.
+function quoteEn(en){ return `“${esc(en.replace(/[.!]$/,''))}”${/\?$/.test(en)?'':'.'}`; }
+function waysList(t,title,skip){ const L=t.acc.filter(a=>a[0]!==skip); return L.length?`<div class="optx talk"><div class="eyebrow">${title}</div><ul>${L.map(a=>`<li class="${t.mine===a?'correct':''}"><span><span class="ch" lang="es">${esc(a[0])}</span> ${speakBtn(a[0],true)} ${t.mine===a?'<span class="tag good">you said this</span>':''}</span><span class="en">${esc(a[1])}</span></li>`).join('')}</ul></div>`:''; }
 function renderTalk(){
   if(LS) return renderLesson();
   if(!C) return renderTalkPicker();
   if(C.i>=C.turns.length) return renderTalkDone();
-  const t=C.turns[C.i]; const answered=C.picked!==null; const ao=audioOnly(); const listen=ao||convMode()==='listen'; const letters='ABC';
+  const t=C.turns[C.i]; const answered=C.picked!==null; const ao=audioOnly(); const mode=talkMode(); const listen=mode==='listen'||(ao&&mode==='speak'); const speak=mode==='speak'&&!C.chose; const letters='ABC';
   const log=C.turns.slice(0,C.i).map(x=>themBubble(x,{en:true})+meBubble(x)).join('');
   const cur=themBubble(t,{hide:listen&&!C.show&&!answered,en:C.en||answered,now:!answered});
   const tools=answered?'':`<div class="talk-tools">${canSpeak?`<button class="btn" type="button" data-say="${esc(t.p)}">${SPEAKER} Otra vez <small>again</small></button><button class="btn" type="button" id="cSlow">Más despacio <small>slower</small></button>`:''}${listen&&!C.show?'<button class="btn ghost" type="button" id="cShow">Show the question</button>':''}${C.en?'':'<button class="btn ghost" type="button" id="cEn">What does it mean?</button>'}${C.d?'<button class="btn ghost" type="button" id="cVocab">Learn the words</button>':''}</div>`;
   let below='';
-  if(!answered){
+  if(!answered&&speak){
+    below=`<div class="eyebrow" style="margin-top:18px">Your reply</div>
+      <div class="mic-box"><span><b>Say your reply out loud.</b> <span class="sub">Tap the mic and answer ${esc(t.who)} in Spanish. Any reply that fits counts.</span></span>
+      <div class="row"><button class="btn primary" type="button" id="micBtn">${MIC} Hablar <small>speak<span class="khint"> · M</span></small></button><span class="mic-out${C.heard?' '+C.heard.cls:''}" id="micOut" aria-live="polite">${C.heard?C.heard.html:''}</span></div></div>
+      <div class="row" style="margin-top:10px"><button class="btn ghost" type="button" id="cChoices">Stuck? Show the choices</button></div>`;
+  } else if(!answered){
     below=`<div class="eyebrow" style="margin-top:18px">Your reply</div>
       <div class="opts" style="margin-top:8px;grid-template-columns:1fr">${t.opts.map((o,i)=>ao
         ? aoOption(o.es,`<button class="opt" data-i="${i}" ${C.showR?'':`aria-label="Reply ${letters[i]}"`}><span class="k">${letters[i]}</span>${C.showR?`<span lang="es">${esc(o.es)}</span>`:`<span class="hid">Reply ${letters[i]}</span>`}</button>`)
@@ -1360,15 +1378,19 @@ function renderTalk(){
       ${ao?`<div class="row" style="margin-top:10px"><button class="btn" type="button" id="cPlayAll">${SPEAKER} Hear every reply</button>${C.showR?'':showWordsBtn('cShowR','Show the replies')}</div>`:''}`;
   } else {
     const o=t.opts[C.picked]; const right=o.c;
-    below=`<div class="feedback ${right?'good':'bad'}" style="margin-top:16px"><b>${right?'¡Correcto!':'Not quite.'}</b><span class="ink">${right?esc(o.why):`The reply that fits is <b class="es" lang="es">${esc(t.ans)}</b> (${esc(t.ansEn)}).`}</span></div>
+    below= t.mine
+      ? `<div class="feedback good" style="margin-top:16px"><b>¡Muy bien!</b><span class="ink">I heard “<span lang="es">${esc(t.heard)}</span>”. ${t.mine[0]===t.ans?esc(o.why):`That fits. It means ${quoteEn(t.mine[1])}`}</span></div>
+      ${waysList(t,'Ways to answer')}`
+      : `<div class="feedback ${right?'good':'bad'}" style="margin-top:16px"><b>${right?'¡Correcto!':'Not quite.'}</b><span class="ink">${right?esc(o.why):`The reply that fits is <b class="es" lang="es">${esc(t.ans)}</b> (${esc(t.ansEn)}).`}</span></div>
       <div class="optx talk"><div class="eyebrow">What each reply means</div><ul>${t.opts.map((x,i)=>`<li class="${x.c?'correct':''}${i===C.picked?' picked':''}"><span><span class="ch" lang="es">${esc(x.es)}</span> ${speakBtn(x.es,true)} ${x.c?'<span class="tag good">fits</span>':i===C.picked?'<span class="tag bad">your pick</span>':''}</span><span class="en">${esc(x.en)}</span><span class="hint">${esc(x.why)}</span></li>`).join('')}</ul></div>
-      ${SR?`<div class="mic-box"><span><b>Now say it out loud.</b> <span class="sub">Tap the mic and say: <span lang="es" class="es">${esc(t.ans)}</span></span></span><div class="row"><button class="btn" type="button" id="micBtn">${MIC} Dilo <small>say it</small></button><span class="mic-out" id="micOut" aria-live="polite"></span></div></div>`:''}
+      ${waysList(t,'Other ways to answer',t.ans)}`;
+    below+=`${SR&&!t.mine?`<div class="mic-box"><span><b>Now say it out loud.</b> <span class="sub">Tap the mic and say: <span lang="es" class="es">${esc(t.ans)}</span></span></span><div class="row"><button class="btn" type="button" id="micBtn">${MIC} Dilo <small>say it</small></button><span class="mic-out" id="micOut" aria-live="polite"></span></div></div>`:''}
       <div class="row" style="margin-top:14px"><button class="btn primary" id="cNext">${C.i+1<C.turns.length?'Siguiente <small>next<span class="khint"> · enter</span></small>':'Finish'}</button></div>`;
   }
   main.innerHTML=`<section class="panel lift">
     <div class="row between"><span class="eyebrow">Conversación · ${esc(C.title)}</span><span class="sub" style="font-variant-numeric:tabular-nums">${C.i+1} / ${C.turns.length} · ${C.score} right</span></div>
     <div class="bar" style="margin:10px 0 14px"><i style="width:${pct(C.i/C.turns.length)}%"></i></div>
-    ${C.i===0&&!answered?`<p class="tip">${C.d?esc(C.d.set):'Ten questions from every unit, like the ones on a speaking test. Pick the reply that answers the question.'}</p>`:''}
+    ${C.i===0&&!answered?`<p class="tip">${C.d?esc(C.d.set):`Ten questions from every unit, like the ones on a speaking test. ${speak?'Say':'Pick'} a reply that answers the question.`}</p>`:''}
     <div class="talk-log">${log}${cur}${answered?meBubble(t):''}</div>
     ${tools}${below}
   </section>`;
@@ -1379,8 +1401,9 @@ function renderTalk(){
   if($('#cEn')) $('#cEn').onclick=()=>{ C.en=true; renderTalk(); };
   if($('#cVocab')) $('#cVocab').onclick=()=>openLesson(C.id);
   if($('#cPlayAll')) $('#cPlayAll').onclick=()=>playChoices(t.opts.map(o=>o.es));
-  if($('#micBtn')) $('#micBtn').onclick=()=>listenFor(t.ans);
-  if($('#cNext')){ const nb=$('#cNext'); nb.focus({preventScroll:true}); nb.onclick=()=>{ C.i++; C.picked=null; C.show=C.showR=false; C.en=false; renderTalk(); }; }
+  if($('#micBtn')) $('#micBtn').onclick=()=>answered?listenFor(t.targets.map(x=>x.say)):speakReply();
+  if($('#cChoices')) $('#cChoices').onclick=()=>{ C.chose=true; renderTalk(); };
+  if($('#cNext')){ const nb=$('#cNext'); nb.focus({preventScroll:true}); nb.onclick=()=>{ C.i++; C.picked=null; C.show=C.showR=false; C.en=false; C.chose=false; C.heard=null; renderTalk(); }; }
   else { const nowB=main.querySelector('.msg.now'); if(nowB&&C.i>0) nowB.scrollIntoView({block:'center'}); }
   const bub=main.querySelector('.msg.now[data-say]'); if(bub) bub.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); say(t.p); } };
   // The opening line waits for a tap on the bubble; later lines play as soon as Siguiente brings them up.
@@ -1440,11 +1463,11 @@ function renderLesson(){
   $('#lBack').onclick=()=>{ stopSpeech(); LS=null; C=null; renderTalk(); };
 }
 function renderTalkPicker(){
-  const mode=convMode();
+  const mode=talkMode(); const ao=audioOnly();
   main.innerHTML=`<section class="panel"><div class="eyebrow">Conversación · Conversation practice</div><h2 class="h2">Practice the back-and-forth</h2>
-    <p class="sub" style="margin-top:6px;max-width:62ch">Someone says a line out loud. You pick the reply that fits. After each answer you see what every reply means${SR?', then say the right one into the mic':''}.</p>
-    <div class="row" style="margin-top:14px"><div class="seg" role="group" aria-label="Mode"><button type="button" data-cmode="read" aria-pressed="${mode==='read'&&!audioOnly()}" ${audioOnly()?'disabled':''}>Leer <small>read + listen</small></button><button type="button" data-cmode="listen" aria-pressed="${mode==='listen'||audioOnly()}" ${audioOnly()?'disabled':''}>Escuchar <small>listen only</small></button></div>
-    <span class="sub" style="font-size:14px">${audioOnly()?'Solo audio is on, so the replies are hidden too. Tap a speaker to hear each one.':mode==='listen'?'The words stay hidden until you answer. This is how a speaking test feels.':'Start here. Switch to Escuchar once a conversation feels easy.'}</span></div>
+    <p class="sub" style="margin-top:6px;max-width:62ch">Someone says a line out loud. You pick the reply that fits${SR?', or say your own in Hablar mode':''}. After each answer you see what every reply means and other ways to say it.</p>
+    <div class="row" style="margin-top:14px"><div class="seg" role="group" aria-label="Mode"><button type="button" data-cmode="read" aria-pressed="${mode==='read'}" ${ao?'disabled':''}>Leer <small>read + listen</small></button><button type="button" data-cmode="listen" aria-pressed="${mode==='listen'}">Escuchar <small>listen only</small></button>${SR?`<button type="button" data-cmode="speak" aria-pressed="${mode==='speak'}">Hablar <small>say your reply</small></button>`:''}</div>
+    <span class="sub" style="font-size:14px">${mode==='speak'?`Answer out loud into the mic. Any reply that fits counts${ao?', and the partner\'s words stay hidden':''}. Stuck? Show the choices.`:ao?'Solo audio is on, so the replies are hidden too. Tap a speaker to hear each one.':mode==='listen'?'The words stay hidden until you answer. This is how a speaking test feels.':`Start here. Switch to Escuchar once a conversation feels easy${SR?', then Hablar':''}.`}</span></div>
     ${canSpeak?'':'<p class="tip" style="margin-top:12px">This browser has no Spanish voice, so Escuchar mode will not work here. Leer mode still does.</p>'}
     <div class="row" style="margin-top:16px"><button class="btn primary big" id="cQuick">Preguntas rápidas <small>10 questions from every unit${P.conv.quick?' · best '+P.conv.quick.best+'%':''}</small></button></div></section>
   <section><div class="row between" style="margin-bottom:10px"><h2 class="h3">Charlas <span class="sub" style="font-weight:400;font-family:var(--body);font-size:15px">· one conversation per unit</span></h2></div>
@@ -1463,25 +1486,58 @@ function renderTalkPicker(){
   main.querySelectorAll('[data-vcards]').forEach(b=>b.onclick=()=>lessonCards(b.dataset.vcards));
   main.querySelectorAll('[data-role]').forEach(b=>b.onclick=()=>startRoleplay(b.dataset.role));
 }
-document.addEventListener('keydown',e=>{ if(view!=='talk'||!C||C.i>=C.turns.length||C.picked!==null) return; if(e.target.matches('input,select,textarea')) return; const k=e.key.toUpperCase(); let i='ABC'.indexOf(k); if(i<0&&['1','2','3'].includes(e.key)) i=+e.key-1; if(i>=0&&i<C.turns[C.i].opts.length) answerTalk(i); });
+document.addEventListener('keydown',e=>{ if(view!=='talk'||!C||C.i>=C.turns.length||C.picked!==null) return; if(e.target.matches('input,select,textarea')) return; const k=e.key.toUpperCase();
+  if(talkMode()==='speak'&&!C.chose){ const b=$('#micBtn'); if(k==='M'&&b&&!b.disabled) speakReply(); return; }
+  let i='ABC'.indexOf(k); if(i<0&&['1','2','3'].includes(e.key)) i=+e.key-1; if(i>=0&&i<C.turns[C.i].opts.length) answerTalk(i); });
 
-// Say it out loud: the browser's speech recognition (Chrome, Edge, Safari). Practice only, never graded.
-const NUMWORD=/^(cero|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieci\w*|veint\w*|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|y)$/;
-function matchScore(target,heard){
-  const tw=norm(target).split(' ').filter(Boolean); const hw=new Set(norm(heard).split(' ')); const digits=/\d/.test(heard);
-  return tw.length? tw.filter(w=>hw.has(w)||(digits&&NUMWORD.test(w))).length/tw.length : 0;
+// Say it out loud: the browser's speech recognition (Chrome, Edge, Safari).
+// Her own facts can differ from the script, so a number, month or day in a free slot counts if she says any other one
+// (see prepTurn), and a name or place (capitalized mid-sentence, like Alex or Texas) counts if she fills it with any word of her own.
+const NUMWORD=/^(\d+|cero|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieci\w*|veint\w*|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien(to)?|primero)$/;
+const MONTHS=/^(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)$/;
+const DAYS=/^(lunes|martes|miercoles|jueves|viernes|sabado|domingo)$/;
+const SLOTS=[NUMWORD,MONTHS,DAYS];
+// Returns {s: share of the target's words she said, k: how many}.
+function matchScore(target,heard,free=[]){
+  const names=new Set(); target.split(/\s+/).forEach((w,i,a)=>{ if(i&&/^[A-ZÁÉÍÓÚÑ]/.test(w.replace(/^[¿¡"]+/,''))&&!/[.!?]$/.test(a[i-1])) names.add(norm(w)); });
+  const hl=norm(heard).split(' ').filter(Boolean); const hw=new Set(hl);
+  const tw=norm(target).split(' ').filter(Boolean); const own=hl.some(h=>!tw.includes(h));
+  const hit=w=>hw.has(w)||(names.has(w)&&own)||free.some(R=>R.test(w)&&hl.some(h=>R.test(h)))||(w==='y'&&hl.some(h=>/^\d+$/.test(h)));
+  // a name filled in counts only alongside the words around it
+  const k=tw.some(w=>!names.has(w)&&hit(w))?tw.filter(hit).length:0; return {s:tw.length?k/tw.length:0,k};
 }
-function listenFor(target){
+// Best match of any of the recognizer's guesses against any target (strings, or objects with .say and .free).
+// A tie goes to the longer match, so "Sí, es un lápiz" is that reply and not just "Sí".
+const beats=(a,b)=>a.s>b.s||(a.s===b.s&&a.k>b.k);
+function bestMatch(targets,heards){ let b={s:-1,k:0,heard:'',t:null}; heards.forEach(h=>targets.forEach(t=>{ const m=matchScore(t.say||t,h,t.free); if(beats(m,b)) b={...m,heard:h,t}; })); return b; }
+// Runs one recognition into #micBtn / #micOut and hands the guesses to onHeard.
+function hear(onHeard){
   const out=$('#micOut'), btn=$('#micBtn'); if(!SR||!out) return;
   let r; try{ r=new SR(); }catch(e){ out.textContent='Speech recognition is not available here.'; return; }
   r.lang='es-MX'; r.interimResults=false; r.maxAlternatives=3;
   let done=false; btn.disabled=true; out.className='mic-out'; out.textContent='Listening… say it now.';
-  r.onresult=e=>{ done=true; let best='', bs=-1; for(const a of e.results[0]){ const s=matchScore(target,a.transcript); if(s>bs){ bs=s; best=a.transcript; } }
-    out.className='mic-out '+(bs>=0.8?'good':bs>=0.5?'warn':'');
-    out.innerHTML=(bs>=0.8?'¡Muy bien! ':bs>=0.5?'Close! ':'')+`I heard: “<span lang="es">${esc(best)}</span>”`+(bs<0.8?'. Listen once more and try again.':''); };
-  r.onerror=e=>{ done=true; out.className='mic-out'; out.textContent= (e.error==='not-allowed'||e.error==='service-not-allowed')? 'The microphone is blocked in this browser. Say it out loud anyway, it still helps.' : e.error==='no-speech'? 'I did not hear anything. Tap the mic and try again.' : 'That did not work. Tap the mic and try again.'; };
+  r.onresult=e=>{ done=true; onHeard([...e.results[0]].map(a=>a.transcript),out); };
+  r.onerror=e=>{ done=true; out.className='mic-out'; out.textContent= (e.error==='not-allowed'||e.error==='service-not-allowed')? 'The microphone is blocked in this browser. Say it out loud anyway, it still helps, or show the choices.' : e.error==='no-speech'? 'I did not hear anything. Tap the mic and try again.' : 'That did not work. Tap the mic and try again.'; };
   r.onend=()=>{ btn.disabled=false; if(!done) out.textContent='I did not hear anything. Tap the mic and try again.'; };
   try{ r.start(); }catch(e){ btn.disabled=false; out.textContent='The mic could not start. Try again.'; }
+}
+// Practice after answering: never graded.
+function listenFor(targets){ hear((alts,out)=>{ const {s:bs,heard:best}=bestMatch(targets,alts);
+  out.className='mic-out '+(bs>=0.8?'good':bs>=0.5?'warn':'');
+  out.innerHTML=(bs>=0.8?'¡Muy bien! ':bs>=0.5?'Close! ':'')+`I heard: “<span lang="es">${esc(best)}</span>”`+(bs<0.8?'. Listen once more and try again.':''); }); }
+// Hablar mode: her spoken reply is the answer. A reply that fits counts as right; one of the wrong choices gets its
+// explanation; anything else can be tried again, or she can show the choices and pick.
+function speakReply(){
+  const t=C.turns[C.i]; stopSpeech();
+  hear((alts,out)=>{
+    const good=bestMatch(t.targets,alts), bad=bestMatch(t.opts.filter(o=>!o.c).map(o=>({say:o.es,o,free:t.free})),alts);
+    const q=h=>`“<span lang="es">${esc(h)}</span>”`;
+    if(good.s>=0.8&&!beats(bad,good)){ t.mine=good.t.a; t.heard=good.heard; C.picked=t.opts.findIndex(o=>o.c); C.score++; markStudied(); say(t.mine[0]); renderTalk(); return; }
+    C.heard= bad.s>=0.8 ? {cls:'bad',html:`Not quite. I heard ${q(bad.heard)}, which means ${quoteEn(bad.t.o.en)} ${esc(bad.t.o.why)} Try again.`}
+      : good.s>=0.5 ? {cls:'warn',html:`Close! I heard ${q(good.heard)}. Try once more.`}
+      : {cls:'',html:`I heard ${q(alts[0]||'')}. That doesn't answer ${esc(t.who)} yet. Listen again and try once more.`};
+    out.className='mic-out '+C.heard.cls; out.innerHTML=C.heard.html;
+  });
 }
 
 // Role-play with Claude (claude.ai only): the Tutor tab runs with role-play rules instead of tutor rules.
@@ -1630,7 +1686,7 @@ function spokenLines(){
   UNITS.forEach(u=>u.cards.forEach(c=>{ add(c[0],'main'); if(/^(el|la) [^\/]+$/.test(c[0])) add(c[0].replace(/^(el|la) /,''),'main'); }));
   for(let n=0;n<300;n++) Object.entries(DRILLS).forEach(([k,d])=>{ if(k==='articles') return; d.build().forEach(q=>{ if(!q.en&&!/^\d/.test(q.prompt)) add(quizSpoken(q),'main'); q.options.forEach(o=>add(o.l,'main')); if(q.full) add(q.full,'main'); }); });
   VERBS.forEach(v=>{ const f=conj(v); PRON.forEach((pr,i)=>{ const p0=pr.split(' / ')[0]; add(p0+', '+v.inf,'main'); add(f[i],'main'); add(p0+' '+f[i],'main'); }); });
-  DIALOGUES.forEach(d=>{ d.turns.forEach(t=>{ add(t.p,'partner'); if(Array.isArray(t.q)) add(t.q[0],'partner'); t.r.forEach(r=>add(r[0],'main')); }); if(d.end) add(d.end[0],'partner'); });
+  DIALOGUES.forEach(d=>{ d.turns.forEach(t=>{ add(t.p,'partner'); if(Array.isArray(t.q)) add(t.q[0],'partner'); t.r.forEach(r=>add(r[0],'main')); (t.x||[]).forEach(r=>add(r[0],'main')); }); if(d.end) add(d.end[0],'partner'); });
   const v0=view; renderNotes(); main.querySelectorAll('[data-say]').forEach(e=>add(e.getAttribute('data-say'),'main')); view=v0; render();
   return [...M.entries()].map(([text,voice])=>({text,voice,file:clipName(text)+'.mp3'}));
 }
