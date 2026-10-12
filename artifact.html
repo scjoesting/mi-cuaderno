@@ -471,243 +471,243 @@ function conj(v){ if(v.forms) return v.forms; const stem=v.inf.slice(0,-2); retu
 // (Preguntas rápidas); q:[es,en] gives a standalone version of the line.
 const DIALOGUES = [
 {id:'saludos', unit:'saludos', title:"¡Mucho gusto!", en:"Meeting a new classmate", who:"Mateo", role:"a friendly new classmate", set:"First day of class. You play Alex. The student next to you turns to say hi.", turns:[
- {p:"¡Hola! ¿Cómo te llamas?", e:"Hi! What's your name?", q:1, r:[
+ {p:"¡Hola! ¿Cómo te llamas?", e:"Hi! What's your name?", q:1, x:[["Mi nombre es Alex.","My name is Alex."],["Soy Alex. ¿Cómo te llamas tú?","I'm Alex. What's your name?"]], r:[
   ["Me llamo Alex. ¿Y tú?","My name is Alex. And you?","Me llamo… answers \"What's your name?\" Adding ¿Y tú? passes the question back, which is polite."],
   ["Tengo quince años.","I'm fifteen.","That answers ¿Cuántos años tienes? (How old are you?), not your name."],
   ["Estoy bien, gracias.","I'm fine, thanks.","That answers ¿Cómo estás? (How are you?). He asked your name."]]},
- {p:"Me llamo Mateo. Mucho gusto.", e:"My name is Mateo. Nice to meet you.", r:[
+ {p:"Me llamo Mateo. Mucho gusto.", e:"My name is Mateo. Nice to meet you.", x:[["Mucho gusto.","Nice to meet you."],["Encantada.","Pleased to meet you. (said by a girl)"]], r:[
   ["Igualmente.","Likewise.","Igualmente (likewise) is the usual reply to mucho gusto. Saying mucho gusto back works too."],
   ["De nada.","You're welcome.","De nada answers gracias. Nobody thanked you."],
   ["Hasta luego.","See you later.","That ends the conversation. You just met!"]]},
- {p:"¿Cómo estás?", e:"How are you?", q:1, r:[
+ {p:"¿Cómo estás?", e:"How are you?", q:1, x:[["Estoy bien, gracias.","I'm fine, thanks."],["Más o menos. ¿Y tú?","So-so. And you?"]], r:[
   ["Muy bien, gracias. ¿Y tú?","Very well, thanks. And you?","¿Cómo estás? asks how you are right now, so answer with bien, mal or más o menos."],
   ["Soy de Texas.","I'm from Texas.","That answers ¿De dónde eres? (Where are you from?)."],
   ["Me llamo Alex.","My name is Alex.","He already knows your name. That answers ¿Cómo te llamas?"]]},
- {p:"Bien. ¿De dónde eres?", e:"Good. Where are you from?", q:["¿De dónde eres?","Where are you from?"], r:[
+ {p:"Bien. ¿De dónde eres?", e:"Good. Where are you from?", q:["¿De dónde eres?","Where are you from?"], x:[["Soy de Texas.","I'm from Texas."],["Soy de México, pero vivo aquí.","I'm from Mexico, but I live here."]], r:[
   ["Soy de California.","I'm from California.","Where you are from is Origin, so it uses ser: soy de + place."],
   ["Estoy de California.","(wrong verb) I'm from California.","Origin always uses ser, never estar. Say soy de."],
   ["Voy a California.","I'm going to California.","Voy a means \"I'm going to\". He asked where you are from."]]},
- {p:"¡Ay, la clase empieza! Hasta luego.", e:"Oh, class is starting! See you later.", r:[
+ {p:"¡Ay, la clase empieza! Hasta luego.", e:"Oh, class is starting! See you later.", x:[["¡Adiós, Mateo!","Bye, Mateo!"],["¡Chao! Nos vemos.","Bye! See you."]], r:[
   ["¡Hasta luego, Mateo!","See you later, Mateo!","He said goodbye, so you say goodbye back."],
   ["¡Buenos días!","Good morning!","That is a hello. He is saying goodbye."],
   ["¿Qué tal?","How's it going?","¿Qué tal? starts a conversation. He is leaving."]]}]},
 
 {id:'numeros', unit:'numeros', title:"¿Cuántos años tienes?", en:"Ages, phone numbers and a little math", who:"Sofía", role:"a classmate in your Spanish class", set:"You're sitting with Sofía at lunch, getting to know each other.", turns:[
- {p:"¿Cuántos años tienes?", e:"How old are you?", q:1, r:[
+ {p:"¿Cuántos años tienes?", e:"How old are you?", q:1, x:[["Tengo quince años.","I'm fifteen."],["Tengo trece años. ¿Y tú?","I'm thirteen. And you?"]], r:[
   ["Tengo catorce años.","I'm fourteen.","Spanish uses tener for age: \"I have fourteen years.\""],
   ["Soy catorce años.","(wrong verb) I'm fourteen.","Age uses tener, not ser. Say tengo catorce años."],
   ["Tengo catorce hermanos.","I have fourteen brothers and sisters.","Hermanos are siblings. That's a big family, but she asked your age."]]},
- {p:"Yo también. ¿Cuál es tu número de teléfono?", e:"Me too. What's your phone number?", q:["¿Cuál es tu número de teléfono?","What's your phone number?"], r:[
+ {p:"Yo también. ¿Cuál es tu número de teléfono?", e:"Me too. What's your phone number?", q:["¿Cuál es tu número de teléfono?","What's your phone number?"], x:[["Mi número es ocho, uno, dos, cuatro, seis, siete, nueve.","My number is 812-4679."],["Es nueve, cero, cuatro, tres, tres, ocho, dos.","It's 904-3382."]], r:[
   ["Es cinco, cinco, cinco, dos, cero, tres, uno.","It's 555-2031.","Es + the numbers. Saying each digit is easy and always understood."],
   ["Son las dos y media.","It's two thirty.","That tells the time. She asked for your phone number."],
   ["Tengo un teléfono.","I have a phone.","True, but it doesn't give her the number."]]},
- {p:"¿Cuántos estudiantes hay en tu clase de español?", e:"How many students are in your Spanish class?", q:1, r:[
+ {p:"¿Cuántos estudiantes hay en tu clase de español?", e:"How many students are in your Spanish class?", q:1, x:[["Hay treinta estudiantes.","There are thirty students."],["En mi clase hay veintidós estudiantes.","In my class there are twenty-two students."]], r:[
   ["Hay veinticinco estudiantes.","There are twenty-five students.","Hay means \"there is / there are\". ¿Cuántos? asks for a number."],
   ["Hay veinticinco años.","There are twenty-five years.","Años are years. She asked about estudiantes."],
   ["Es la clase de español.","It's Spanish class.","That names the class but doesn't say how many students."]]},
- {p:"¡Qué grande! En mi clase hay dieciocho. ¿Cuánto es quince más quince?", e:"That's big! My class has eighteen. What's fifteen plus fifteen?", r:[
+ {p:"¡Qué grande! En mi clase hay dieciocho. ¿Cuánto es quince más quince?", e:"That's big! My class has eighteen. What's fifteen plus fifteen?", x:[["Son treinta.","It's thirty."],["¡Es fácil! Treinta.","That's easy! Thirty."]], r:[
   ["Quince más quince son treinta.","Fifteen plus fifteen is thirty.","Treinta is 30. Más means plus."],
   ["Quince más quince son cincuenta.","Fifteen plus fifteen is fifty.","Cincuenta is 50. Thirty is treinta."],
   ["Quince más quince son trece.","Fifteen plus fifteen is thirteen.","Trece (13) and treinta (30) sound alike. Treinta is the one you need."]]},
- {p:"¡Correcto! Eres muy inteligente.", e:"Correct! You're very smart.", r:[
+ {p:"¡Correcto! Eres muy inteligente.", e:"Correct! You're very smart.", x:[["¡Muchas gracias!","Thank you very much!"],["Gracias. ¡Tú también!","Thanks. You too!"]], r:[
   ["¡Gracias!","Thanks!","Someone gives you a compliment, you say gracias."],
   ["De nada.","You're welcome.","De nada answers gracias. She paid you a compliment."],
   ["Lo siento.","I'm sorry.","There's nothing to apologize for."]]}]},
 
 {id:'fechas', unit:'fechas', title:"¿Cuándo es tu cumpleaños?", en:"Days, dates and birthdays", who:"Diego", role:"a friend from school", set:"Diego is planning birthday parties for the year and asks you some questions.", turns:[
- {p:"¿Qué día es hoy?", e:"What day is today?", q:1, r:[
+ {p:"¿Qué día es hoy?", e:"What day is today?", q:1, x:[["Es lunes.","It's Monday."],["Hoy es miércoles.","Today is Wednesday."]], r:[
   ["Hoy es viernes.","Today is Friday.","Days of the week use ser: hoy es + day. No capital letter on viernes."],
   ["Hoy está viernes.","(wrong verb) Today is Friday.","Days and dates are Time, so they use ser, not estar."],
   ["Hoy hace sol.","It's sunny today.","That answers ¿Qué tiempo hace? (What's the weather?)."]]},
- {p:"¡Qué bueno! ¿Cuál es la fecha de hoy?", e:"Great! What's today's date?", q:["¿Cuál es la fecha de hoy?","What's today's date?"], r:[
+ {p:"¡Qué bueno! ¿Cuál es la fecha de hoy?", e:"Great! What's today's date?", q:["¿Cuál es la fecha de hoy?","What's today's date?"], x:[["Hoy es el primero de mayo.","Today is May first."],["Es el veinte de septiembre.","It's September twentieth."]], r:[
   ["Es el doce de octubre.","It's October twelfth.","Dates go el + number + de + month: el doce de octubre."],
   ["Es octubre doce.","It's October twelve.","That's English order. Spanish puts the number first: el doce de octubre."],
   ["Es lunes.","It's Monday.","That's the day of the week. The fecha is the date."]]},
- {p:"¿Cuándo es tu cumpleaños?", e:"When is your birthday?", q:1, r:[
+ {p:"¿Cuándo es tu cumpleaños?", e:"When is your birthday?", q:1, x:[["Es el quince de julio.","It's July fifteenth."],["Mi cumpleaños es el primero de enero.","My birthday is January first."]], r:[
   ["Mi cumpleaños es el tres de marzo.","My birthday is March third.","Same pattern as any date: el + number + de + month."],
   ["Tengo tres años.","I'm three years old.","That's your age, and a very young one!"],
   ["Me gusta mi cumpleaños.","I like my birthday.","Nice, but ¿Cuándo? asks when."]]},
- {p:"¿En qué mes es el Día de Acción de Gracias?", e:"What month is Thanksgiving in?", r:[
+ {p:"¿En qué mes es el Día de Acción de Gracias?", e:"What month is Thanksgiving in?", x:[["En noviembre.","In November."],["El Día de Acción de Gracias es en noviembre.","Thanksgiving is in November."]], r:[
   ["Es en noviembre.","It's in November.","Thanksgiving is in noviembre. En + month means \"in\" that month."],
   ["Es en julio.","It's in July.","July is the Fourth of July. Thanksgiving is in November."],
   ["Es el jueves.","It's on Thursday.","Thanksgiving is on a Thursday, but he asked which mes (month)."]]},
- {p:"¿Qué día no tienes clases?", e:"What day don't you have classes?", q:1, r:[
+ {p:"¿Qué día no tienes clases?", e:"What day don't you have classes?", q:1, x:[["Los domingos.","On Sundays."],["No tengo clases los sábados ni los domingos.","I don't have classes on Saturdays or Sundays."]], r:[
   ["No tengo clases los sábados.","I don't have classes on Saturdays.","Los sábados means \"on Saturdays\" (every Saturday). Days take el or los, never en."],
   ["No tengo clases en sábado.","I don't have classes in Saturday.","Spanish doesn't use en with days. Say el sábado or los sábados."],
   ["No tengo la clase de arte.","I don't have art class.","That says which class, not which day."]]}], end:["¡Yo tampoco! Hasta el lunes.","Me neither! See you Monday."]},
 
 {id:'clase', unit:'clase', title:"¿Tienes un lápiz?", en:"Borrowing supplies in class", who:"Camila", role:"a classmate who sits next to you", set:"Class is about to start and Camila forgot some things.", turns:[
- {p:"Oye, ¿tienes un lápiz?", e:"Hey, do you have a pencil?", r:[
+ {p:"Oye, ¿tienes un lápiz?", e:"Hey, do you have a pencil?", x:[["Sí. Aquí tienes.","Yes. Here you go."],["Sí, tengo dos. Toma uno.","Yes, I have two. Take one."]], r:[
   ["Sí, tengo un lápiz. Aquí está.","Yes, I have a pencil. Here it is.","She asked if you have one, so answer with tengo."],
   ["Sí, tengo una lápiz.","Yes, I have a pencil.","Lápiz is masculine (el lápiz), so it's un lápiz."],
   ["Sí, es un lápiz.","Yes, it's a pencil.","That says what something is. She asked if you have one."]]},
- {p:"Gracias. ¿Qué clase tienes ahora?", e:"Thanks. What class do you have now?", q:["¿Qué clase tienes ahora?","What class do you have now?"], r:[
+ {p:"Gracias. ¿Qué clase tienes ahora?", e:"Thanks. What class do you have now?", q:["¿Qué clase tienes ahora?","What class do you have now?"], x:[["Tengo matemáticas.","I have math."],["Ahora tengo la clase de inglés.","Now I have English class."]], r:[
   ["Tengo la clase de ciencias.","I have science class.","Tengo la clase de + subject."],
   ["Tengo un cuaderno.","I have a notebook.","A cuaderno is a notebook, not a class."],
   ["Son las diez.","It's ten o'clock.","That's the time. She asked which class."]]},
- {p:"¿Dónde está tu mochila?", e:"Where is your backpack?", q:1, r:[
+ {p:"¿Dónde está tu mochila?", e:"Where is your backpack?", q:1, x:[["Está debajo de la mesa.","It's under the table."],["Mi mochila está al lado de la silla.","My backpack is next to the chair."]], r:[
   ["Está cerca de la puerta.","It's near the door.","Where something is uses estar: está + place."],
   ["Es cerca de la puerta.","(wrong verb) It's near the door.","Location always uses estar, not ser. Remember PLACE."],
   ["Mi mochila es azul.","My backpack is blue.","That's its color. ¿Dónde? asks where."]]},
- {p:"¿Cómo es tu profesor de matemáticas?", e:"What is your math teacher like?", q:1, r:[
+ {p:"¿Cómo es tu profesor de matemáticas?", e:"What is your math teacher like?", q:1, x:[["Es muy inteligente y divertido.","He's very smart and fun."],["Es alto y un poco aburrido.","He's tall and a little boring."]], r:[
   ["Es simpático y un poco serio.","He's nice and a little serious.","¿Cómo es? asks what someone is like. Profesor is a man, so the adjectives end in -o."],
   ["Es simpática y un poco seria.","She's nice and a little serious.","Profesor is masculine, so the adjectives need -o: simpático, serio."],
   ["Está en la cafetería.","He's in the cafeteria.","That says where he is. ¿Cómo es? asks what he's like."]]},
- {p:"¡Uy, la profesora! Necesitamos estudiar.", e:"Uh-oh, the teacher! We need to study.", r:[
+ {p:"¡Uy, la profesora! Necesitamos estudiar.", e:"Uh-oh, the teacher! We need to study.", x:[["Sí, ¡vamos a estudiar!","Yes, let's study!"],["Tienes razón. Necesito mi cuaderno.","You're right. I need my notebook."]], r:[
   ["Tienes razón. Abro mi libro.","You're right. I'm opening my book.","Opening your book is what you do to start studying."],
   ["Tienes razón. Cierro mi libro.","You're right. I'm closing my book.","Cerrar is to close. That's the opposite of studying!"],
   ["No, gracias.","No, thanks.","No, gracias turns down an offer. She didn't offer you anything."]]}]},
 
 {id:'descripciones', unit:'descripciones', title:"¿Cómo eres?", en:"Describing yourself and others", who:"Valentina", role:"a new friend", set:"Valentina is getting to know you and your family.", turns:[
- {p:"¿Cómo eres?", e:"What are you like?", q:1, r:[
+ {p:"¿Cómo eres?", e:"What are you like?", q:1, x:[["Soy simpática y un poco tímida.","I'm nice and a little shy."],["Soy alta, morena y muy trabajadora.","I'm tall, dark-haired and very hardworking."]], r:[
   ["Soy inteligente y muy paciente.","I'm smart and very patient.","¿Cómo eres? asks about personality, which uses ser: soy + adjectives."],
   ["Estoy inteligente.","(wrong verb) I'm smart.","Personality is a Characteristic, so it uses ser: soy inteligente."],
   ["Estoy bien, gracias.","I'm fine, thanks.","That answers ¿Cómo estás? (How are you?). ¿Cómo eres? means \"What are you like?\""]]},
- {p:"¿Cómo es tu mejor amigo?", e:"What is your best friend like?", q:1, r:[
+ {p:"¿Cómo es tu mejor amigo?", e:"What is your best friend like?", q:1, x:[["Es simpático y muy inteligente.","He's nice and very smart."],["Mi mejor amigo es bajo y deportista.","My best friend is short and athletic."]], r:[
   ["Es alto, moreno y muy gracioso.","He's tall, dark-haired and very funny.","Amigo is masculine, so every adjective ends in -o."],
   ["Es alta, morena y muy graciosa.","She's tall, dark-haired and very funny.","Amigo (with -o) is a boy, so the adjectives need -o."],
   ["Está alto y moreno.","(wrong verb) He's tall and dark-haired.","Looks are Description, so they use ser: es alto."]]},
- {p:"¿Y tus hermanas? ¿Cómo son?", e:"And your sisters? What are they like?", r:[
+ {p:"¿Y tus hermanas? ¿Cómo son?", e:"And your sisters? What are they like?", x:[["Son altas y muy inteligentes.","They're tall and very smart."],["Mis hermanas son graciosas, pero un poco perezosas.","My sisters are funny, but a little lazy."]], r:[
   ["Son rubias y simpáticas.","They're blond and nice.","They are = son. Hermanas are girls and plural, so -as."],
   ["Es rubia y simpática.","She's blond and nice.","Es is for one person. For two sisters, use son and add -s."],
   ["Son rubios y simpáticos.","They're blond and nice.","Your sisters are all girls, so the adjectives end in -as, not -os."]]},
- {p:"¿Cómo estás hoy?", e:"How are you today?", q:1, r:[
+ {p:"¿Cómo estás hoy?", e:"How are you today?", q:1, x:[["Estoy bien, pero un poco cansada.","I'm fine, but a little tired."],["Estoy muy contenta hoy.","I'm very happy today."]], r:[
   ["Estoy feliz porque es viernes.","I'm happy because it's Friday.","How you feel today is an Emotion, so it uses estar."],
   ["Soy alto y moreno.","I'm tall and dark-haired.","That's what you look like (¿Cómo eres?). Hoy asks how you feel today."],
   ["Estás feliz.","You're happy.","Estás is the tú form. Talking about yourself, use estoy."]]},
- {p:"Yo también. ¡Hasta mañana!", e:"Me too. See you tomorrow!", r:[
+ {p:"Yo también. ¡Hasta mañana!", e:"Me too. See you tomorrow!", x:[["¡Adiós! Hasta mañana.","Bye! See you tomorrow."],["¡Nos vemos mañana!","See you tomorrow!"]], r:[
   ["¡Hasta mañana!","See you tomorrow!","She said goodbye, so say it back."],
   ["¡Mucho gusto!","Nice to meet you!","You say mucho gusto when you first meet. Now she is leaving."],
   ["¿Cómo te llamas?","What's your name?","Odd to ask her name as she leaves. You already know it."]]}]},
 
 {id:'familia', unit:'familia', title:"Mi familia", en:"Talking about your family and pets", who:"Andrés", role:"a classmate working on a family project with you", set:"You and Andrés are interviewing each other for a family-tree project.", turns:[
- {p:"¿Cuántas personas hay en tu familia?", e:"How many people are in your family?", q:1, r:[
+ {p:"¿Cuántas personas hay en tu familia?", e:"How many people are in your family?", q:1, x:[["Hay cuatro personas.","There are four people."],["En mi familia hay seis personas.","In my family there are six people."]], r:[
   ["Hay cinco personas en mi familia.","There are five people in my family.","Hay + number answers ¿Cuántas?"],
   ["Hay cinco personas en mi clase.","There are five people in my class.","He asked about your familia, not your clase."],
   ["Tengo cinco años.","I'm five years old.","That's an age, and a very young one."]]},
- {p:"¿Tienes hermanos?", e:"Do you have brothers or sisters?", q:1, r:[
+ {p:"¿Tienes hermanos?", e:"Do you have brothers or sisters?", q:1, x:[["Sí, tengo dos hermanas.","Yes, I have two sisters."],["No, no tengo hermanos. Soy hija única.","No, I don't have siblings. I'm an only child."]], r:[
   ["Sí, tengo un hermano y una hermana.","Yes, I have a brother and a sister.","Use tener for family you have. Hermano takes un, hermana takes una."],
   ["Sí, tengo una hermano.","Yes, I have a brother.","Hermano ends in -o and is masculine, so it's un hermano."],
   ["Sí, soy un hermano.","Yes, I am a brother.","That says what you are. To say you have siblings, use tengo."]]},
- {p:"¿Cómo se llama tu madre?", e:"What is your mother's name?", q:1, r:[
+ {p:"¿Cómo se llama tu madre?", e:"What is your mother's name?", q:1, x:[["Mi madre se llama Ana.","My mother's name is Ana."],["Se llama María.","Her name is María."]], r:[
   ["Se llama Laura.","Her name is Laura.","For someone else's name, use se llama."],
   ["Me llamo Laura.","My name is Laura.","Me llamo is YOUR name. For your mom, say se llama."],
   ["Tiene cuarenta años.","She's forty.","That's her age, not her name."]]},
- {p:"¿Tienes mascotas?", e:"Do you have pets?", q:1, r:[
+ {p:"¿Tienes mascotas?", e:"Do you have pets?", q:1, x:[["Sí, tengo un perro.","Yes, I have a dog."],["Sí, tengo dos gatos.","Yes, I have two cats."]], r:[
   ["Sí, tengo un gato. Se llama Max.","Yes, I have a cat. His name is Max.","A gato is a pet, and it is masculine: un gato."],
   ["Sí, tengo un primo.","Yes, I have a cousin.","A primo is a cousin, not a pet!"],
   ["Sí, tengo una gato.","Yes, I have a cat.","Gato ends in -o and is masculine, so it's un gato."]]},
- {p:"¡Qué lindo! Yo tengo dos perros. ¿Te gustan los perros?", e:"How cute! I have two dogs. Do you like dogs?", r:[
+ {p:"¡Qué lindo! Yo tengo dos perros. ¿Te gustan los perros?", e:"How cute! I have two dogs. Do you like dogs?", x:[["¡Sí, me encantan!","Yes, I love them!"],["No mucho. Me gustan más los gatos.","Not much. I like cats more."]], r:[
   ["Sí, me gustan mucho.","Yes, I like them a lot.","Los perros is plural, so it's gustan."],
   ["Sí, me gusta mucho.","Yes, I like it a lot.","Los perros is more than one thing, so use gustan."],
   ["Sí, tengo dos perros.","Yes, I have two dogs.","That repeats what he said. He asked if you like dogs."]]}]},
 
 {id:'actividades', unit:'actividades', title:"¿Qué te gusta hacer?", en:"Free time and making plans", who:"Isabel", role:"a friend from school", set:"You and Isabel are talking about what you do after school.", turns:[
- {p:"¿Qué te gusta hacer?", e:"What do you like to do?", q:1, r:[
+ {p:"¿Qué te gusta hacer?", e:"What do you like to do?", q:1, x:[["Me gusta leer.","I like to read."],["Me gusta jugar al fútbol y nadar.","I like to play soccer and swim."]], r:[
   ["Me gusta bailar y escuchar música.","I like to dance and listen to music.","Activities always take gusta, even when you name two."],
   ["Me gustan bailar y escuchar música.","I like to dance and listen to music.","Activities (verbs) always use gusta, never gustan."],
   ["Yo gusto bailar.","(not Spanish) I like to dance.","Spanish doesn't say yo gusto. Say me gusta."]]},
- {p:"¿Practicas deportes?", e:"Do you play sports?", q:1, r:[
+ {p:"¿Practicas deportes?", e:"Do you play sports?", q:1, x:[["Sí, juego al básquetbol.","Yes, I play basketball."],["No, no practico deportes.","No, I don't play sports."]], r:[
   ["Sí, nado y corro mucho.","Yes, I swim and run a lot.","Talking about yourself, regular verbs end in -o: nado, corro."],
   ["Sí, nadas y corres mucho.","Yes, you swim and run a lot.","Nadas and corres are tú forms (you). For I, use nado and corro."],
   ["Sí, veo la tele.","Yes, I watch TV.","Watching TV isn't a sport."]]},
- {p:"¿Qué no te gusta hacer?", e:"What don't you like to do?", q:1, r:[
+ {p:"¿Qué no te gusta hacer?", e:"What don't you like to do?", q:1, x:[["No me gusta limpiar mi cuarto.","I don't like to clean my room."],["No me gusta cocinar.","I don't like to cook."]], r:[
   ["No me gusta trabajar los sábados.","I don't like working on Saturdays.","Put no in front of me gusta."],
   ["Me gusta trabajar los sábados.","I like working on Saturdays.","She asked what you DON'T like. You need no in front."],
   ["No te gusta trabajar.","You don't like to work.","Te gusta is about you (the person you talk to). For yourself, use me."]]},
- {p:"¿Quieres ver una película el sábado?", e:"Do you want to watch a movie on Saturday?", r:[
+ {p:"¿Quieres ver una película el sábado?", e:"Do you want to watch a movie on Saturday?", x:[["¡Claro que sí!","Of course!"],["Sí, quiero ver una película.","Yes, I want to see a movie."]], r:[
   ["¡Sí, quiero! ¿A qué hora?","Yes, I want to! What time?","Quiero is the yo form of querer. Asking ¿A qué hora? keeps the plan going."],
   ["Sí, quieres.","Yes, you want to.","Quieres is the tú form. Say quiero for I want."],
   ["Sí, es sábado.","Yes, it's Saturday.","That doesn't answer whether you want to go."]]},
- {p:"A las siete. ¡Hasta el sábado!", e:"At seven. See you Saturday!", r:[
+ {p:"A las siete. ¡Hasta el sábado!", e:"At seven. See you Saturday!", x:[["¡Muy bien! Nos vemos.","Great! See you."],["¡Chao! Hasta el sábado.","Bye! See you Saturday."]], r:[
   ["¡Perfecto! ¡Hasta el sábado!","Perfect! See you Saturday!","Agree to the plan and say goodbye."],
   ["De nada.","You're welcome.","De nada answers gracias. She didn't thank you."],
   ["Son las siete.","It's seven o'clock.","That says it is seven right now. The movie is A las siete (at seven)."]]}]},
 
 {id:'comida', unit:'comida', title:"En el restaurante", en:"Ordering food at a restaurant", who:"El mesero", role:"a polite waiter at a Mexican restaurant who speaks to the student as usted", set:"You're at a restaurant. The waiter comes to your table.", turns:[
- {p:"Buenas tardes. ¿Qué desea comer?", e:"Good afternoon. What would you like to eat?", r:[
+ {p:"Buenas tardes. ¿Qué desea comer?", e:"Good afternoon. What would you like to eat?", x:[["Quiero los tacos, por favor.","I want the tacos, please."],["Una pizza, por favor.","A pizza, please."]], r:[
   ["Quiero una hamburguesa, por favor.","I want a hamburger, please.","Quiero + food + por favor is a polite order."],
   ["Quiero un hamburguesa, por favor.","I want a hamburger, please.","Hamburguesa ends in -a and is feminine, so it's una."],
   ["Me gusta comer.","I like to eat.","True, but it doesn't tell him what to bring."]]},
- {p:"Muy bien. ¿Y para beber?", e:"Very good. And to drink?", q:["¿Qué quieres beber?","What do you want to drink?"], r:[
+ {p:"Muy bien. ¿Y para beber?", e:"Very good. And to drink?", q:["¿Qué quieres beber?","What do you want to drink?"], x:[["Quiero un agua, por favor.","I want a water, please."],["Un refresco, por favor.","A soda, please."]], r:[
   ["Un jugo de naranja, por favor.","An orange juice, please.","Beber is to drink, so order a drink."],
   ["Una ensalada, por favor.","A salad, please.","A salad is food. He asked about a drink."],
   ["Tengo hambre.","I'm hungry.","Hambre is hunger. For a drink, you'd say tengo sed, and then order."]]},
- {p:"¿Quiere usted algo más?", e:"Would you like anything else?", r:[
+ {p:"¿Quiere usted algo más?", e:"Would you like anything else?", x:[["No, gracias.","No, thanks."],["Sí, quiero un postre, por favor.","Yes, I want a dessert, please."]], r:[
   ["No, gracias. Es todo.","No, thanks. That's all.","No, gracias politely says you don't want more."],
   ["No, de nada.","No, you're welcome.","De nada answers gracias. Use no, gracias."],
   ["Sí, gracias. Es todo.","Yes, thanks. That's all.","Sí says you want more, then es todo says you don't. Pick one!"]]},
- {p:"¿Cómo está la comida?", e:"How is the food?", q:["¿Cómo está la pizza?","How is the pizza?"], r:[
+ {p:"¿Cómo está la comida?", e:"How is the food?", q:["¿Cómo está la pizza?","How is the pizza?"], x:[["Está muy rica.","It's very tasty."],["¡Está muy buena, gracias!","It's very good, thanks!"]], r:[
   ["¡Está deliciosa!","It's delicious!","How food tastes right now uses estar. Comida is feminine, so deliciosa."],
   ["¡Está delicioso!","It's delicious!","Comida ends in -a and is feminine, so the adjective is deliciosa."],
   ["¡Qué asco!","How gross!","That means you hate it. Not very nice to say to the waiter!"]]},
- {p:"Me alegro. Son ocho dólares.", e:"I'm glad. That's eight dollars.", r:[
+ {p:"Me alegro. Son ocho dólares.", e:"I'm glad. That's eight dollars.", x:[["Aquí tiene.","Here you go."],["Gracias. Aquí tiene diez dólares.","Thanks. Here are ten dollars."]], r:[
   ["Aquí tiene. Muchas gracias.","Here you go. Thank you very much.","Aquí tiene (here you go) is what you say as you hand someone money."],
   ["Son las ocho.","It's eight o'clock.","Son las ocho tells the time. He told you the price."],
   ["Tengo ocho años.","I'm eight years old.","That's an age, not a payment!"]]}], end:["Gracias a usted. ¡Que tenga un buen día!","Thank you. Have a nice day!"]},
 
 {id:'preguntas', unit:'preguntas', title:"¿A qué hora?", en:"Time, schedules and question words", who:"Lucas", role:"a new student who doesn't know the school yet", set:"Lucas is new and asks you about the school day.", turns:[
- {p:"Perdón, ¿qué hora es?", e:"Excuse me, what time is it?", q:["¿Qué hora es?","What time is it?"], r:[
+ {p:"Perdón, ¿qué hora es?", e:"Excuse me, what time is it?", q:["¿Qué hora es?","What time is it?"], x:[["Es la una.","It's one o'clock."],["Son las dos y cuarto.","It's two fifteen."]], r:[
   ["Son las tres y media.","It's three thirty.","After one o'clock, use son las + hour."],
   ["Es las tres y media.","It's three thirty.","Only one o'clock uses es la. Three uses son las."],
   ["A las tres y media.","At three thirty.","A las means \"at\" a time, for when something happens. He asked what time it is now."]]},
- {p:"Gracias. ¿A qué hora es la clase de español?", e:"Thanks. What time is Spanish class?", q:["¿A qué hora es tu clase de español?","What time is your Spanish class?"], r:[
+ {p:"Gracias. ¿A qué hora es la clase de español?", e:"Thanks. What time is Spanish class?", q:["¿A qué hora es tu clase de español?","What time is your Spanish class?"], x:[["A las diez.","At ten."],["Es a la una y media de la tarde.","It's at one thirty in the afternoon."]], r:[
   ["Es a las nueve de la mañana.","It's at nine in the morning.","¿A qué hora? asks when, so answer with a las."],
   ["Son las nueve de la mañana.","It's nine in the morning (now).","That says what time it is right now. Use a las for when the class is."],
   ["Es en la biblioteca.","It's in the library.","That says where. He asked when."]]},
- {p:"¿Quién es el profesor?", e:"Who is the teacher?", q:["¿Quién es tu profesor de español?","Who is your Spanish teacher?"], r:[
+ {p:"¿Quién es el profesor?", e:"Who is the teacher?", q:["¿Quién es tu profesor de español?","Who is your Spanish teacher?"], x:[["Es la señora López.","It's Mrs. López."],["Mi profesor es el señor Ruiz.","My teacher is Mr. Ruiz."]], r:[
   ["Es el señor García.","It's Mr. García.","¿Quién? asks who, so answer with a name."],
   ["Es muy simpático.","He's very nice.","That says what he's like (¿Cómo es?). ¿Quién? asks who."],
   ["Es a las nueve.","It's at nine.","That says when. ¿Quién? asks who."]]},
- {p:"¿Te gusta la clase? ¿Por qué?", e:"Do you like the class? Why?", q:["¿Por qué te gusta tu clase favorita?","Why do you like your favorite class?"], r:[
+ {p:"¿Te gusta la clase? ¿Por qué?", e:"Do you like the class? Why?", q:["¿Por qué te gusta tu clase favorita?","Why do you like your favorite class?"], x:[["Me gusta porque el profesor es simpático.","I like it because the teacher is nice."],["Porque es interesante.","Because it's interesting."]], r:[
   ["Sí, porque es divertida.","Yes, because it's fun.","Porque (one word, no accent) means because. Clase is feminine, so divertida."],
   ["Sí, ¿por qué es divertida?","Yes, why is it fun?","¿Por qué? asks why. To answer, use porque."],
   ["Sí, porque es divertido.","Yes, because it's fun.","Clase is feminine, so the adjective needs -a: divertida."]]},
- {p:"¿Cuántas clases tienes hoy?", e:"How many classes do you have today?", q:1, r:[
+ {p:"¿Cuántas clases tienes hoy?", e:"How many classes do you have today?", q:1, x:[["Hoy tengo siete clases.","Today I have seven classes."],["Tengo cuatro.","I have four."]], r:[
   ["Tengo seis clases.","I have six classes.","¿Cuántas? asks how many, so answer with a number."],
   ["Son las seis.","It's six o'clock.","That's the time. He asked how many classes."],
   ["Tengo la clase de arte.","I have art class.","That names one class. He asked how many."]]}]},
 
 {id:'colores', unit:'colores', title:"¿Qué tiempo hace?", en:"Weather, seasons and colors", who:"Paula", role:"a friend visiting from another city", set:"Paula is visiting your town and wants to know what it's like here.", turns:[
- {p:"¿Qué tiempo hace hoy?", e:"What's the weather like today?", q:1, r:[
+ {p:"¿Qué tiempo hace hoy?", e:"What's the weather like today?", q:1, x:[["Hace frío.","It's cold."],["Está nublado y llueve.","It's cloudy and it's raining."]], r:[
   ["Hace calor y hace sol.","It's hot and sunny.","Most weather uses hace: hace calor, hace frío, hace sol."],
   ["Es calor y sol.","(wrong verb) It's hot and sunny.","Weather uses hace, not ser."],
   ["Tengo calor.","I'm hot.","Tengo calor is how YOU feel. Weather uses hace calor."]]},
- {p:"¿Cuál es tu estación favorita?", e:"What's your favorite season?", q:1, r:[
+ {p:"¿Cuál es tu estación favorita?", e:"What's your favorite season?", q:1, x:[["Me gusta el verano.","I like summer."],["Mi estación favorita es la primavera.","My favorite season is spring."]], r:[
   ["Mi estación favorita es el invierno porque nieva.","My favorite season is winter because it snows.","Estaciones are seasons: la primavera, el verano, el otoño, el invierno."],
   ["Mi estación favorita es diciembre.","My favorite season is December.","Diciembre is a month. She asked for a season."],
   ["Mi estación favorita es el invierno porque hace calor.","My favorite season is winter because it's hot.","Winter isn't hot in most places! Try nieva or hace frío."]]},
- {p:"¿Cuál es tu color favorito?", e:"What's your favorite color?", q:1, r:[
+ {p:"¿Cuál es tu color favorito?", e:"What's your favorite color?", q:1, x:[["Es el rojo.","It's red."],["Mi color favorito es el morado.","My favorite color is purple."]], r:[
   ["Mi color favorito es el azul.","My favorite color is blue.","When a color is used as a noun, it takes el: el azul, el rojo."],
   ["Mi color favorito es la azul.","My favorite color is blue.","Color names as nouns are masculine: el azul."],
   ["Mi color favorito es el verano.","My favorite color is summer.","Verano is a season, not a color."]]},
- {p:"¿De qué color es tu mochila?", e:"What color is your backpack?", q:1, r:[
+ {p:"¿De qué color es tu mochila?", e:"What color is your backpack?", q:1, x:[["Es azul.","It's blue."],["Mi mochila es negra y blanca.","My backpack is black and white."]], r:[
   ["Es roja y negra.","It's red and black.","Mochila is feminine, so the colors end in -a."],
   ["Es rojo y negro.","It's red and black.","Mochila is feminine, so it's roja y negra."],
   ["Es grande.","It's big.","That's the size. She asked the color."]]},
- {p:"¿Llueve mucho aquí en abril?", e:"Does it rain a lot here in April?", r:[
+ {p:"¿Llueve mucho aquí en abril?", e:"Does it rain a lot here in April?", x:[["Sí, llueve mucho.","Yes, it rains a lot."],["No, no llueve mucho.","No, it doesn't rain much."]], r:[
   ["Sí, llueve mucho en la primavera.","Yes, it rains a lot in the spring.","Llueve means it rains. Weather verbs have one form: llueve, nieva."],
   ["Sí, llueves mucho.","Yes, you rain a lot.","Llueves means \"you rain\". Weather only uses llueve."],
   ["Sí, hace sol todo el día.","Yes, it's sunny all day.","Sunny all day means no rain. That contradicts your sí."]]}]},
 
 {id:'lugares', unit:'lugares', title:"¿Adónde vas?", en:"Places and making plans with ir", who:"Tomás", role:"a friend from school", set:"School just ended. You run into Tomás in the hallway.", turns:[
- {p:"¿Adónde vas después de las clases?", e:"Where are you going after classes?", q:["¿Adónde vas?","Where are you going?"], r:[
+ {p:"¿Adónde vas después de las clases?", e:"Where are you going after classes?", q:["¿Adónde vas?","Where are you going?"], x:[["A la biblioteca.","To the library."],["Voy a casa.","I'm going home."]], r:[
   ["Voy a la biblioteca.","I'm going to the library.","¿Adónde? asks where to, so answer with voy a + place."],
   ["Voy a el parque.","I'm going to the park.","A + el always becomes al: voy al parque."],
   ["Estoy en la biblioteca.","I'm at the library.","That says where you are now. He asked where you are going."]]},
- {p:"¿Qué vas a hacer allí?", e:"What are you going to do there?", r:[
+ {p:"¿Qué vas a hacer allí?", e:"What are you going to do there?", x:[["Voy a leer un libro.","I'm going to read a book."],["Voy a hacer la tarea.","I'm going to do homework."]], r:[
   ["Voy a estudiar para el examen.","I'm going to study for the test.","Voy a + infinitive means \"I'm going to do\" something."],
   ["Voy estudiar.","I'm going study.","You need the a: voy a estudiar."],
   ["Voy a la escuela.","I'm going to school.","That's a place. He asked what you'll do."]]},
- {p:"¿Dónde está la biblioteca?", e:"Where is the library?", q:1, r:[
+ {p:"¿Dónde está la biblioteca?", e:"Where is the library?", q:1, x:[["Está al lado de la escuela.","It's next to the school."],["Está lejos de aquí.","It's far from here."]], r:[
   ["Está cerca del parque.","It's near the park.","Location uses estar. De + el becomes del."],
   ["Es cerca del parque.","(wrong verb) It's near the park.","Where something is uses estar, not ser."],
   ["Voy cerca del parque.","I'm going near the park.","That says where you're going. He asked where the library is."]]},
- {p:"¿Quieres ir al centro comercial el domingo?", e:"Do you want to go to the mall on Sunday?", q:["¿Quieres ir al cine el sábado?","Do you want to go to the movies on Saturday?"], r:[
+ {p:"¿Quieres ir al centro comercial el domingo?", e:"Do you want to go to the mall on Sunday?", q:["¿Quieres ir al cine el sábado?","Do you want to go to the movies on Saturday?"], x:[["¡Sí, claro!","Yes, of course!"],["Sí, quiero ir. ¿A qué hora?","Yes, I want to go. What time?"]], r:[
   ["Sí, ¿vamos a las dos?","Yes, shall we go at two?","Vamos means \"we go\" or \"let's go\", great for making plans."],
   ["Sí, vas a las dos.","Yes, you go at two.","Vas is the tú form. To go together, use vamos."],
   ["No, quiero ir.","No, I want to go.","No and quiero ir say opposite things."]]},
- {p:"¡Perfecto! Nos vemos el domingo.", e:"Perfect! See you Sunday.", r:[
+ {p:"¡Perfecto! Nos vemos el domingo.", e:"Perfect! See you Sunday.", x:[["¡Nos vemos!","See you!"],["¡Adiós, Tomás!","Bye, Tomás!"]], r:[
   ["¡Hasta el domingo!","See you Sunday!","He said domingo, so you say goodbye until Sunday."],
   ["¡Hasta el lunes!","See you Monday!","You made plans for Sunday (domingo), not Monday."],
   ["¡Buenos días!","Good morning!","That's a hello. He's saying goodbye."]]}]}
