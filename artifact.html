@@ -1368,7 +1368,7 @@ function renderTalk(){
   if(!answered&&speak){
     below=`<div class="eyebrow" style="margin-top:18px">Your reply</div>
       <div class="mic-box"><span><b>Say your reply out loud.</b> <span class="sub">Tap the mic and answer ${esc(t.who)} in Spanish. Any reply that fits counts.</span></span>
-      <div class="row"><button class="btn primary" type="button" id="micBtn">${MIC} Hablar <small>speak<span class="khint"> · M</span></small></button><span class="mic-out${C.heard?' '+C.heard.cls:''}" id="micOut" aria-live="polite">${C.heard?C.heard.html:''}</span></div></div>
+      <div class="row"><button class="btn primary" type="button" id="micBtn">${MIC} Dilo <small>say it<span class="khint"> · M</span></small></button><span class="mic-out${C.heard?' '+C.heard.cls:''}" id="micOut" aria-live="polite">${C.heard?C.heard.html:''}</span></div></div>
       <div class="row" style="margin-top:10px"><button class="btn ghost" type="button" id="cChoices">Stuck? Show the choices</button></div>`;
   } else if(!answered){
     below=`<div class="eyebrow" style="margin-top:18px">Your reply</div>
@@ -1465,9 +1465,9 @@ function renderLesson(){
 function renderTalkPicker(){
   const mode=talkMode(); const ao=audioOnly();
   main.innerHTML=`<section class="panel"><div class="eyebrow">Conversación · Conversation practice</div><h2 class="h2">Practice the back-and-forth</h2>
-    <p class="sub" style="margin-top:6px;max-width:62ch">Someone says a line out loud. You pick the reply that fits${SR?', or say your own in Hablar mode':''}. After each answer you see what every reply means and other ways to say it.</p>
-    <div class="row" style="margin-top:14px"><div class="seg" role="group" aria-label="Mode"><button type="button" data-cmode="read" aria-pressed="${mode==='read'}" ${ao?'disabled':''}>Leer <small>read + listen</small></button><button type="button" data-cmode="listen" aria-pressed="${mode==='listen'}">Escuchar <small>listen only</small></button>${SR?`<button type="button" data-cmode="speak" aria-pressed="${mode==='speak'}">Hablar <small>say your reply</small></button>`:''}</div>
-    <span class="sub" style="font-size:14px">${mode==='speak'?`Answer out loud into the mic. Any reply that fits counts${ao?', and the partner\'s words stay hidden':''}. Stuck? Show the choices.`:ao?'Solo audio is on, so the replies are hidden too. Tap a speaker to hear each one.':mode==='listen'?'The words stay hidden until you answer. This is how a speaking test feels.':`Start here. Switch to Escuchar once a conversation feels easy${SR?', then Hablar':''}.`}</span></div>
+    <p class="sub" style="margin-top:6px;max-width:62ch">Someone says a line out loud. You pick the reply that fits${SR?', or say your own in Decir mode':''}. After each answer you see what every reply means and other ways to say it.</p>
+    <div class="row" style="margin-top:14px"><div class="seg" role="group" aria-label="Mode"><button type="button" data-cmode="read" aria-pressed="${mode==='read'}" ${ao?'disabled':''}>Leer <small>read + listen</small></button><button type="button" data-cmode="listen" aria-pressed="${mode==='listen'}">Escuchar <small>listen only</small></button>${SR?`<button type="button" data-cmode="speak" aria-pressed="${mode==='speak'}">Decir <small>say your reply</small></button>`:''}</div>
+    <span class="sub" style="font-size:14px">${mode==='speak'?`Answer out loud into the mic. Any reply that fits counts${ao?', and the partner\'s words stay hidden':''}. Stuck? Show the choices.`:ao?'Solo audio is on, so the replies are hidden too. Tap a speaker to hear each one.':mode==='listen'?'The words stay hidden until you answer. This is how a speaking test feels.':`Start here. Switch to Escuchar once a conversation feels easy${SR?', then Decir':''}.`}</span></div>
     ${canSpeak?'':'<p class="tip" style="margin-top:12px">This browser has no Spanish voice, so Escuchar mode will not work here. Leer mode still does.</p>'}
     <div class="row" style="margin-top:16px"><button class="btn primary big" id="cQuick">Preguntas rápidas <small>10 questions from every unit${P.conv.quick?' · best '+P.conv.quick.best+'%':''}</small></button></div></section>
   <section><div class="row between" style="margin-bottom:10px"><h2 class="h3">Charlas <span class="sub" style="font-weight:400;font-family:var(--body);font-size:15px">· one conversation per unit</span></h2></div>
@@ -1525,7 +1525,7 @@ function hear(onHeard){
 function listenFor(targets){ hear((alts,out)=>{ const {s:bs,heard:best}=bestMatch(targets,alts);
   out.className='mic-out '+(bs>=0.8?'good':bs>=0.5?'warn':'');
   out.innerHTML=(bs>=0.8?'¡Muy bien! ':bs>=0.5?'Close! ':'')+`I heard: “<span lang="es">${esc(best)}</span>”`+(bs<0.8?'. Listen once more and try again.':''); }); }
-// Hablar mode: her spoken reply is the answer. A reply that fits counts as right; one of the wrong choices gets its
+// Decir mode: her spoken reply is the answer. A reply that fits counts as right; one of the wrong choices gets its
 // explanation; anything else can be tried again, or she can show the choices and pick.
 function speakReply(){
   const t=C.turns[C.i]; stopSpeech();
