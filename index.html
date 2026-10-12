@@ -1510,14 +1510,28 @@ const NUMWORD=/^(\d+|cero|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|o
 const MONTHS=/^(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)$/;
 const DAYS=/^(lunes|martes|miercoles|jueves|viernes|sabado|domingo)$/;
 const SLOTS=[NUMWORD,MONTHS,DAYS];
-// Returns {s: share of the target's words she said, k: how many}.
+// Words she may leave out: a name she is talking to at the end ("Hasta luego, Mateo"), a polite tail
+// (", gracias" or ", por favor") and a leading "Sí,". Saying them still counts; leaving them out costs nothing.
+function optionalWords(target){
+  const opt=new Set(), parts=target.split(','), last=parts.length-1; if(!last) return opt;
+  parts.forEach((seg,i)=>{ const w=norm(seg).split(' ').filter(Boolean);
+    if(i===last&&w.length===1&&/^[A-ZÁÉÍÓÚÑ]/.test(seg.trim().replace(/^[¿¡"]+/,''))) opt.add(w[0]);
+    if(i===last&&/^(gracias|por favor)$/.test(w.join(' '))) w.forEach(x=>opt.add(x));
+    if(i===0&&w.join(' ')==='si') opt.add('si'); });
+  return opt;
+}
+// Returns {s: share of the target's words she said (optional ones she left out don't count), k: how many,
+// miss: the words she still needs, as written in the target}.
 function matchScore(target,heard,free=[]){
   const names=new Set(); target.split(/\s+/).forEach((w,i,a)=>{ if(i&&/^[A-ZÁÉÍÓÚÑ]/.test(w.replace(/^[¿¡"]+/,''))&&!/[.!?]$/.test(a[i-1])) names.add(norm(w)); });
   const hl=norm(heard).split(' ').filter(Boolean); const hw=new Set(hl);
   const tw=norm(target).split(' ').filter(Boolean); const own=hl.some(h=>!tw.includes(h));
   const hit=w=>hw.has(w)||(names.has(w)&&own)||free.some(R=>R.test(w)&&hl.some(h=>R.test(h)))||(w==='y'&&hl.some(h=>/^\d+$/.test(h)));
+  const opt=optionalWords(target), n=tw.filter(w=>!opt.has(w)||hit(w)).length;
   // a name filled in counts only alongside the words around it
-  const k=tw.some(w=>!names.has(w)&&hit(w))?tw.filter(hit).length:0; return {s:tw.length?k/tw.length:0,k};
+  const k=tw.some(w=>!names.has(w)&&hit(w))?tw.filter(hit).length:0;
+  const miss=target.split(/\s+/).filter(w=>{ const x=norm(w); return x&&!opt.has(x)&&!hit(x); }).map(w=>{ w=w.replace(/[¿?¡!.,;:"…]/g,''); return names.has(norm(w))?w:w.toLowerCase(); });
+  return {s:n?k/n:0,k,miss};
 }
 // Best match of any of the recognizer's guesses against any target (strings, or objects with .say and .free).
 // A tie goes to the longer match, so "Sí, es un lápiz" is that reply and not just "Sí".
@@ -1535,9 +1549,11 @@ function hear(onHeard){
   try{ r.start(); }catch(e){ btn.disabled=false; out.textContent='The mic could not start. Try again.'; }
 }
 // Practice after answering: never graded.
-function listenFor(targets){ hear((alts,out)=>{ const {s:bs,heard:best}=bestMatch(targets,alts);
+function listenFor(targets){ hear((alts,out)=>{ const {s:bs,heard:best,miss}=bestMatch(targets,alts);
   out.className='mic-out '+(bs>=0.8?'good':bs>=0.5?'warn':'');
-  out.innerHTML=(bs>=0.8?'¡Muy bien! ':bs>=0.5?'Close! ':'')+`I heard: “<span lang="es">${esc(best)}</span>”`+(bs<0.8?'. Listen once more and try again.':''); }); }
+  out.innerHTML=(bs>=0.8?'¡Muy bien! ':bs>=0.5?'Close! ':'')+`I heard: “<span lang="es">${esc(best)}</span>”`+(bs>=0.8?'':bs>=0.5?'.'+missHint(miss):'. Listen once more and try again.'); }); }
+// After a close reply: the words still missing from the reply she was nearest, so she knows what to fix.
+function missHint(miss){ return miss&&miss.length?` Try adding ${miss.slice(0,3).map(w=>`<b lang="es">${esc(w)}</b>`).join(', ')}${miss.length>3?' and more':''}.`:' Try once more.'; }
 // Decir mode: her spoken reply is the answer. A reply that fits counts as right; one of the wrong choices gets its
 // explanation; anything else can be tried again, or she can show the choices and pick.
 function speakReply(){ stopSpeech(); hear((alts,out)=>checkReply(alts,out,false)); }
@@ -1548,7 +1564,7 @@ function checkReply(alts,out,typed){
   const q=h=>`“<span lang="es">${esc(h)}</span>”`, got=typed?'You wrote':'I heard';
   if(good.s>=0.8&&!beats(bad,good)){ t.mine=good.t.a; t.heard=good.heard; t.typed=typed; C.picked=t.opts.findIndex(o=>o.c); C.score++; markStudied(); say(t.mine[0]); renderTalk(); return; }
   C.heard= bad.s>=0.8 ? {cls:'bad',html:`Not quite. ${got} ${q(bad.heard)}, which means ${quoteEn(bad.t.o.en)} ${esc(bad.t.o.why)} Try again.`}
-    : good.s>=0.5 ? {cls:'warn',html:`Close! ${got} ${q(good.heard)}. Try once more.`}
+    : good.s>=0.5 ? {cls:'warn',html:`Close! ${got} ${q(good.heard)}.${missHint(good.miss)}`}
     : {cls:'',html:`${got} ${q(alts[0]||'')}. That doesn't answer ${esc(t.who)} yet. Listen again and try once more.`};
   out.className='mic-out '+C.heard.cls; out.innerHTML=C.heard.html;
 }
