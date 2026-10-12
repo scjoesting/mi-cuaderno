@@ -1338,8 +1338,9 @@ let LS=null; // vocabulary lesson for one conversation: {id}
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition||null;
 const MIC='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>';
 function convMode(){ return P.settings.convMode||'read'; }
-// The mode in effect: 'speak' needs speech recognition, and Solo audio never shows the partner's words up front.
-function talkMode(){ let m=convMode(); if(m==='speak'&&!SR) m='read'; if(m==='read'&&audioOnly()) m='listen'; return m; }
+// The mode in effect: Solo audio never shows the partner's words up front. Decir works everywhere: without speech
+// recognition (Firefox) she types her reply instead of saying it.
+function talkMode(){ let m=convMode(); if(m==='read'&&audioOnly()) m='listen'; return m; }
 // acc: every reply that fits ([es,en], the main one first). say: what speech is matched against. A reply like
 // "Me llamo Alex. ¿Y tú?" also counts without its question tail, so its first sentence is a target of its own.
 // free: the kinds of word (number, month, day) she can swap for her own, unless a wrong reply turns on that word.
@@ -1367,8 +1368,11 @@ function renderTalk(){
   let below='';
   if(!answered&&speak){
     below=`<div class="eyebrow" style="margin-top:18px">Your reply</div>
-      <div class="mic-box"><span><b>Say your reply out loud.</b> <span class="sub">Tap the mic and answer ${esc(t.who)} in Spanish. Any reply that fits counts.</span></span>
-      <div class="row"><button class="btn primary" type="button" id="micBtn">${MIC} Dilo <small>say it<span class="khint"> · M</span></small></button><span class="mic-out${C.heard?' '+C.heard.cls:''}" id="micOut" aria-live="polite">${C.heard?C.heard.html:''}</span></div></div>
+      <div class="mic-box"><span><b>${SR?'Say your reply out loud, or type it.':'Type your reply.'}</b> <span class="sub">Answer ${esc(t.who)} in Spanish. Any reply that fits counts.</span></span>
+      ${SR?`<div class="row"><button class="btn primary" type="button" id="micBtn">${MIC} Dilo <small>say it<span class="khint"> · M</span></small></button></div>`:''}
+      <form id="cType" class="row" autocomplete="off" style="margin-top:4px"><input type="text" id="cIn" lang="es" value="${esc(C.draft||'')}" placeholder="${SR?'Or type it here…':'Type your reply…'}" autocapitalize="sentences" autocorrect="off" spellcheck="false" aria-label="Your reply" style="flex:1 1 220px"><button class="btn${SR?'':' primary'}" type="submit">Comprobar <small>check<span class="khint"> · enter</span></small></button></form>
+      ${accentKeys()}
+      <span class="mic-out${C.heard?' '+C.heard.cls:''}" id="micOut" aria-live="polite">${C.heard?C.heard.html:''}</span></div>
       <div class="row" style="margin-top:10px"><button class="btn ghost" type="button" id="cChoices">Stuck? Show the choices</button></div>`;
   } else if(!answered){
     below=`<div class="eyebrow" style="margin-top:18px">Your reply</div>
@@ -1379,7 +1383,7 @@ function renderTalk(){
   } else {
     const o=t.opts[C.picked]; const right=o.c;
     below= t.mine
-      ? `<div class="feedback good" style="margin-top:16px"><b>¡Muy bien!</b><span class="ink">I heard “<span lang="es">${esc(t.heard)}</span>”. ${t.mine[0]===t.ans?esc(o.why):`That fits. It means ${quoteEn(t.mine[1])}`}</span></div>
+      ? `<div class="feedback good" style="margin-top:16px"><b>¡Muy bien!</b><span class="ink">${t.typed?'You wrote':'I heard'} “<span lang="es">${esc(t.heard)}</span>”. ${t.mine[0]===t.ans?esc(o.why):`That fits. It means ${quoteEn(t.mine[1])}`}</span></div>
       ${waysList(t,'Ways to answer')}`
       : `<div class="feedback ${right?'good':'bad'}" style="margin-top:16px"><b>${right?'¡Correcto!':'Not quite.'}</b><span class="ink">${right?esc(o.why):`The reply that fits is <b class="es" lang="es">${esc(t.ans)}</b> (${esc(t.ansEn)}).`}</span></div>
       <div class="optx talk"><div class="eyebrow">What each reply means</div><ul>${t.opts.map((x,i)=>`<li class="${x.c?'correct':''}${i===C.picked?' picked':''}"><span><span class="ch" lang="es">${esc(x.es)}</span> ${speakBtn(x.es,true)} ${x.c?'<span class="tag good">fits</span>':i===C.picked?'<span class="tag bad">your pick</span>':''}</span><span class="en">${esc(x.en)}</span><span class="hint">${esc(x.why)}</span></li>`).join('')}</ul></div>
@@ -1390,7 +1394,7 @@ function renderTalk(){
   main.innerHTML=`<section class="panel lift">
     <div class="row between"><span class="eyebrow">Conversación · ${esc(C.title)}</span><span class="sub" style="font-variant-numeric:tabular-nums">${C.i+1} / ${C.turns.length} · ${C.score} right</span></div>
     <div class="bar" style="margin:10px 0 14px"><i style="width:${pct(C.i/C.turns.length)}%"></i></div>
-    ${C.i===0&&!answered?`<p class="tip">${C.d?esc(C.d.set):`Ten questions from every unit, like the ones on a speaking test. ${speak?'Say':'Pick'} a reply that answers the question.`}</p>`:''}
+    ${C.i===0&&!answered?`<p class="tip">${C.d?esc(C.d.set):`Ten questions from every unit, like the ones on a speaking test. ${speak?(SR?'Say or type':'Type'):'Pick'} a reply that answers the question.`}</p>`:''}
     <div class="talk-log">${log}${cur}${answered?meBubble(t):''}</div>
     ${tools}${below}
   </section>`;
@@ -1403,7 +1407,9 @@ function renderTalk(){
   if($('#cPlayAll')) $('#cPlayAll').onclick=()=>playChoices(t.opts.map(o=>o.es));
   if($('#micBtn')) $('#micBtn').onclick=()=>answered?listenFor(t.targets.map(x=>x.say)):speakReply();
   if($('#cChoices')) $('#cChoices').onclick=()=>{ C.chose=true; renderTalk(); };
-  if($('#cNext')){ const nb=$('#cNext'); nb.focus({preventScroll:true}); nb.onclick=()=>{ C.i++; C.picked=null; C.show=C.showR=false; C.en=false; C.chose=false; C.heard=null; renderTalk(); }; }
+  if($('#cType')){ const inp=$('#cIn'); lastInput=inp; inp.oninput=()=>{ C.draft=inp.value; }; if(!SR&&!matchMedia('(pointer:coarse)').matches) inp.focus({preventScroll:true});
+    $('#cType').onsubmit=e=>{ e.preventDefault(); if(inp.value.trim()) checkReply([inp.value.trim()],$('#micOut'),true); }; }
+  if($('#cNext')){ const nb=$('#cNext'); nb.focus({preventScroll:true}); nb.onclick=()=>{ C.i++; C.picked=null; C.show=C.showR=false; C.en=false; C.chose=false; C.heard=null; C.draft=''; renderTalk(); }; }
   else { const nowB=main.querySelector('.msg.now'); if(nowB&&C.i>0) nowB.scrollIntoView({block:'center'}); }
   const bub=main.querySelector('.msg.now[data-say]'); if(bub) bub.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); say(t.p); } };
   // The opening line waits for a tap on the bubble; later lines play as soon as Siguiente brings them up.
@@ -1465,9 +1471,9 @@ function renderLesson(){
 function renderTalkPicker(){
   const mode=talkMode(); const ao=audioOnly();
   main.innerHTML=`<section class="panel"><div class="eyebrow">Conversación · Conversation practice</div><h2 class="h2">Practice the back-and-forth</h2>
-    <p class="sub" style="margin-top:6px;max-width:62ch">Someone says a line out loud. You pick the reply that fits${SR?', or say your own in Decir mode':''}. After each answer you see what every reply means and other ways to say it.</p>
-    <div class="row" style="margin-top:14px"><div class="seg" role="group" aria-label="Mode"><button type="button" data-cmode="read" aria-pressed="${mode==='read'}" ${ao?'disabled':''}>Leer <small>read + listen</small></button><button type="button" data-cmode="listen" aria-pressed="${mode==='listen'}">Escuchar <small>listen only</small></button>${SR?`<button type="button" data-cmode="speak" aria-pressed="${mode==='speak'}">Decir <small>say your reply</small></button>`:''}</div>
-    <span class="sub" style="font-size:14px">${mode==='speak'?`Answer out loud into the mic. Any reply that fits counts${ao?', and the partner\'s words stay hidden':''}. Stuck? Show the choices.`:ao?'Solo audio is on, so the replies are hidden too. Tap a speaker to hear each one.':mode==='listen'?'The words stay hidden until you answer. This is how a speaking test feels.':`Start here. Switch to Escuchar once a conversation feels easy${SR?', then Decir':''}.`}</span></div>
+    <p class="sub" style="margin-top:6px;max-width:62ch">Someone says a line out loud. You pick the reply that fits, or ${SR?'say or type':'type'} your own in Decir mode. After each answer you see what every reply means and other ways to say it.</p>
+    <div class="row" style="margin-top:14px"><div class="seg" role="group" aria-label="Mode"><button type="button" data-cmode="read" aria-pressed="${mode==='read'}" ${ao?'disabled':''}>Leer <small>read + listen</small></button><button type="button" data-cmode="listen" aria-pressed="${mode==='listen'}">Escuchar <small>listen only</small></button><button type="button" data-cmode="speak" aria-pressed="${mode==='speak'}">Decir <small>${SR?'say or type':'type'} your reply</small></button></div>
+    <span class="sub" style="font-size:14px">${mode==='speak'?`${SR?'Answer out loud into the mic, or type it.':'Type your answer in Spanish.'} Any reply that fits counts${ao?', and the partner\'s words stay hidden':''}. Stuck? Show the choices.`:ao?'Solo audio is on, so the replies are hidden too. Tap a speaker to hear each one.':mode==='listen'?'The words stay hidden until you answer. This is how a speaking test feels.':`Start here. Switch to Escuchar once a conversation feels easy, then Decir.`}</span></div>
     ${canSpeak?'':'<p class="tip" style="margin-top:12px">This browser has no Spanish voice, so Escuchar mode will not work here. Leer mode still does.</p>'}
     <div class="row" style="margin-top:16px"><button class="btn primary big" id="cQuick">Preguntas rápidas <small>10 questions from every unit${P.conv.quick?' · best '+P.conv.quick.best+'%':''}</small></button></div></section>
   <section><div class="row between" style="margin-bottom:10px"><h2 class="h3">Charlas <span class="sub" style="font-weight:400;font-family:var(--body);font-size:15px">· one conversation per unit</span></h2></div>
@@ -1527,17 +1533,17 @@ function listenFor(targets){ hear((alts,out)=>{ const {s:bs,heard:best}=bestMatc
   out.innerHTML=(bs>=0.8?'¡Muy bien! ':bs>=0.5?'Close! ':'')+`I heard: “<span lang="es">${esc(best)}</span>”`+(bs<0.8?'. Listen once more and try again.':''); }); }
 // Decir mode: her spoken reply is the answer. A reply that fits counts as right; one of the wrong choices gets its
 // explanation; anything else can be tried again, or she can show the choices and pick.
-function speakReply(){
-  const t=C.turns[C.i]; stopSpeech();
-  hear((alts,out)=>{
-    const good=bestMatch(t.targets,alts), bad=bestMatch(t.opts.filter(o=>!o.c).map(o=>({say:o.es,o,free:t.free})),alts);
-    const q=h=>`“<span lang="es">${esc(h)}</span>”`;
-    if(good.s>=0.8&&!beats(bad,good)){ t.mine=good.t.a; t.heard=good.heard; C.picked=t.opts.findIndex(o=>o.c); C.score++; markStudied(); say(t.mine[0]); renderTalk(); return; }
-    C.heard= bad.s>=0.8 ? {cls:'bad',html:`Not quite. I heard ${q(bad.heard)}, which means ${quoteEn(bad.t.o.en)} ${esc(bad.t.o.why)} Try again.`}
-      : good.s>=0.5 ? {cls:'warn',html:`Close! I heard ${q(good.heard)}. Try once more.`}
-      : {cls:'',html:`I heard ${q(alts[0]||'')}. That doesn't answer ${esc(t.who)} yet. Listen again and try once more.`};
-    out.className='mic-out '+C.heard.cls; out.innerHTML=C.heard.html;
-  });
+function speakReply(){ stopSpeech(); hear((alts,out)=>checkReply(alts,out,false)); }
+// Grades a reply she said (the recognizer's guesses) or typed (one string), the same way either way.
+function checkReply(alts,out,typed){
+  const t=C.turns[C.i];
+  const good=bestMatch(t.targets,alts), bad=bestMatch(t.opts.filter(o=>!o.c).map(o=>({say:o.es,o,free:t.free})),alts);
+  const q=h=>`“<span lang="es">${esc(h)}</span>”`, got=typed?'You wrote':'I heard';
+  if(good.s>=0.8&&!beats(bad,good)){ t.mine=good.t.a; t.heard=good.heard; t.typed=typed; C.picked=t.opts.findIndex(o=>o.c); C.score++; markStudied(); say(t.mine[0]); renderTalk(); return; }
+  C.heard= bad.s>=0.8 ? {cls:'bad',html:`Not quite. ${got} ${q(bad.heard)}, which means ${quoteEn(bad.t.o.en)} ${esc(bad.t.o.why)} Try again.`}
+    : good.s>=0.5 ? {cls:'warn',html:`Close! ${got} ${q(good.heard)}. Try once more.`}
+    : {cls:'',html:`${got} ${q(alts[0]||'')}. That doesn't answer ${esc(t.who)} yet. Listen again and try once more.`};
+  out.className='mic-out '+C.heard.cls; out.innerHTML=C.heard.html;
 }
 
 // Role-play with Claude (claude.ai only): the Tutor tab runs with role-play rules instead of tutor rules.
